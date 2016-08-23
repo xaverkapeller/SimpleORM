@@ -1,0 +1,3 @@
+include ':SimpleOrm'
+include ':SimpleOrmApi'
+include ':SimpleOrmProcessor'
