@@ -40,13 +40,18 @@ public class SQLiteProviderBuilder {
     private static final Method METHOD_EXEC_SQL = Methods.stub("execSql");
 
     private static final Map<ColumnType, String> SQL_TYPE_MAP = new MapBuilder<ColumnType, String>()
+            .put(ColumnType.PRIMITIVE_BOOLEAN, "INTEGER")
             .put(ColumnType.BOOLEAN, "INTEGER")
-            .put(ColumnType.DATE, "INTEGER")
+            .put(ColumnType.PRIMITIVE_DOUBLE, "REAL")
             .put(ColumnType.DOUBLE, "REAL")
+            .put(ColumnType.PRIMITIVE_FLOAT, "REAL")
             .put(ColumnType.FLOAT, "REAL")
+            .put(ColumnType.PRIMITIVE_INT, "INTEGER")
             .put(ColumnType.INT, "INTEGER")
+            .put(ColumnType.DATE, "INTEGER")
             .put(ColumnType.STRING, "TEXT")
             .put(ColumnType.ENTITY, "INTEGER")
+            .put(ColumnType.PRIMITIVE_LONG, "INTEGER")
             .put(ColumnType.LONG, "INTEGER")
             .build();
 
@@ -192,7 +197,7 @@ public class SQLiteProviderBuilder {
 
     private String getCreateMappingTableStatement(EntityInfo entity, ColumnInfo column) {
         return "CREATE TABLE " + MappingTables.getTableName(entity, column) + " (" +
-                "Id INTEGER PRIMARY KEY, " +
+                "_id INTEGER PRIMARY KEY, " +
                 "ParentId INTEGER, " +
                 "ChildId INTEGER" +
                 ");";

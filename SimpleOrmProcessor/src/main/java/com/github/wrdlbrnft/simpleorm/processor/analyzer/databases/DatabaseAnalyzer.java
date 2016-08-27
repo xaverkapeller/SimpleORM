@@ -18,6 +18,7 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnType;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityAnalyzer;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.InvalidEntityException;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterManager;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -53,12 +54,12 @@ public class DatabaseAnalyzer {
         mRepositoryType = SimpleOrmTypes.REPOSITORY.asTypeElement(processingEnv);
     }
 
-    public List<DatabaseInfo> analyze(List<TypeElement> databaseElements) {
+    public List<DatabaseInfo> analyze(List<TypeElement> databaseElements, TypeAdapterManager adapterManager) {
         final Set<String> databaseNames = new HashSet<>();
         final List<DatabaseInfo> infos = new ArrayList<>(databaseElements.size());
         for (TypeElement element : databaseElements) {
             try {
-                final DatabaseInfo databaseInfo = analyze(element);
+                final DatabaseInfo databaseInfo = analyze(element, adapterManager);
                 if (!databaseNames.add(databaseInfo.getDatabaseName())) {
                     throw new InvalidDatabaseNameException("You have defined two databases with the same name. Each database has to have a unique name.", element);
                 }
@@ -74,7 +75,7 @@ public class DatabaseAnalyzer {
         return infos;
     }
 
-    private DatabaseInfo analyze(TypeElement databaseElement) {
+    private DatabaseInfo analyze(TypeElement databaseElement, TypeAdapterManager adapterManager) {
         final Database database = databaseElement.getAnnotation(Database.class);
 
         mTableNames.clear();
@@ -132,7 +133,7 @@ public class DatabaseAnalyzer {
                 throw new InvalidRepositoryMethodException("The entity referenced by the method " + method.getSimpleName() + "() is missing the @Entity annotation! You have to annotate your entities properly.", method);
             }
 
-            final EntityInfo entityInfo = mEntityAnalyzer.analyze(entityElement);
+            final EntityInfo entityInfo = mEntityAnalyzer.analyze(entityElement, adapterManager);
             entityInfos.add(entityInfo);
             if (!mTableNames.add(entityInfo.getTableName())) {
                 throw new InvalidTableNameException("The database " + databaseElement.getSimpleName() + " already contains another entity with the same name declared in its @Entity annotation! Those names have to be unique for each database!", method);

@@ -10,10 +10,12 @@ public interface RowReader {
     float getFloat(int index);
     double getDouble(int index);
     int getInt(int index);
+    long getLong(int index);
     short getShort(int index);
     Float getFloatOrNull(int index);
     Double getDoubleOrNull(int index);
     Integer getIntOrNull(int index);
+    Long getLongOrNull(int index);
     Short getShortOrNull(int index);
     byte[] getBlob(int index);
     String getString(int index);

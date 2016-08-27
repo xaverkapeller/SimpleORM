@@ -70,7 +70,7 @@ public class BaseRepository<T> implements Repository<T> {
         }
 
         @Override
-        public EntityIterator<T> queryLazy(QueryParameters parameters) {
+        public List<T> queryLazy(QueryParameters parameters) {
             return mEntityManager.queryLazy(parameters);
         }
     };

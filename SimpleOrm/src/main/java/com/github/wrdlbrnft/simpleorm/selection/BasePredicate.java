@@ -17,7 +17,8 @@ public abstract class BasePredicate<T, P, R> implements Predicate<T, P, R> {
 
     @Override
     public P isNull() {
-        return appendStatement("=", null);
+        mSelectionBuilder.isNull(mField.getName());
+        return mBuilder;
     }
 
     protected P appendStatement(String operator, String argument) {

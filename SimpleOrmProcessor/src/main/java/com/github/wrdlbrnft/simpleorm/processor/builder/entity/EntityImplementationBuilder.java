@@ -42,7 +42,7 @@ public class EntityImplementationBuilder {
     public EntityImplementationInfo build(EntityInfo info) {
         final Implementation.Builder builder = new Implementation.Builder();
         builder.setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC));
-        builder.setExtendedType(Types.of(info.getEntityElement()));
+        builder.addImplementedType(Types.of(info.getEntityElement()));
 
         final List<ColumnInfo> constructorParameters = new ArrayList<>();
         final Map<ColumnInfo, Field> fieldMap = new HashMap<>();
@@ -83,7 +83,7 @@ public class EntityImplementationBuilder {
 
     private Field implementMethod(Implementation.Builder builder, ColumnInfo info) {
         final Field field = new Field.Builder()
-                .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.FINAL))
+                .setModifiers(EnumSet.of(Modifier.PRIVATE))
                 .setType(Types.of(info.getTypeMirror()))
                 .build();
         builder.addField(field);

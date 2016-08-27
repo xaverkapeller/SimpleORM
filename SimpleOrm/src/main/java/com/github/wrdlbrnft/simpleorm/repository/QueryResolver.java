@@ -1,6 +1,5 @@
 package com.github.wrdlbrnft.simpleorm.repository;
 
-import com.github.wrdlbrnft.simpleorm.entities.EntityIterator;
 import com.github.wrdlbrnft.simpleorm.Loader;
 import com.github.wrdlbrnft.simpleorm.entities.QueryParameters;
 
@@ -14,5 +13,5 @@ import java.util.List;
 interface QueryResolver<T> {
     Loader<T> queryFirst(QueryParameters parameters);
     Loader<List<T>> queryList(QueryParameters parameters);
-    EntityIterator<T> queryLazy(QueryParameters parameters);
+    List<T> queryLazy(QueryParameters parameters);
 }

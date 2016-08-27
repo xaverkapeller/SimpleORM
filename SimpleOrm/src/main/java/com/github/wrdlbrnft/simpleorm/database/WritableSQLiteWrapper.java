@@ -10,7 +10,7 @@ import android.content.ContentValues;
 
 public interface WritableSQLiteWrapper {
     void beginTransaction();
-    void insert(String tableName, ContentValues contentValues);
+    long insert(String tableName, ContentValues contentValues);
     void delete(String tableName, String selection, String[] selectionArgs);
     void setTransactionSuccessFul();
     void endTransaction();

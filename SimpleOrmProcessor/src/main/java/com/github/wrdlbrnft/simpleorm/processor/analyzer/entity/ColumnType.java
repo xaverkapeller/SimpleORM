@@ -8,10 +8,15 @@ package com.github.wrdlbrnft.simpleorm.processor.analyzer.entity;
 
 public enum ColumnType {
     ENTITY,
+    PRIMITIVE_INT,
     INT,
+    PRIMITIVE_LONG,
     LONG,
+    PRIMITIVE_BOOLEAN,
     BOOLEAN,
+    PRIMITIVE_FLOAT,
     FLOAT,
+    PRIMITIVE_DOUBLE,
     DOUBLE,
     STRING,
     DATE

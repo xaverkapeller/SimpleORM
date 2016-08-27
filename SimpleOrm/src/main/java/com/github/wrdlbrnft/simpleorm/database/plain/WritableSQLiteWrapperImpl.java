@@ -24,8 +24,8 @@ class WritableSQLiteWrapperImpl implements WritableSQLiteWrapper {
     }
 
     @Override
-    public void insert(String tableName, ContentValues values) {
-        mDatabase.insert(tableName, null, values);
+    public long insert(String tableName, ContentValues values) {
+        return mDatabase.insert(tableName, null, values);
     }
 
     @Override

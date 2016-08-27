@@ -12,6 +12,6 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
 public class MappingTables {
 
     public static String getTableName(EntityInfo entity, ColumnInfo column) {
-        return "_" + entity.getTableName() + column.getColumnName() + "Mapping";
+        return "_" + entity.getTableName() + "_" + column.getColumnName() + "_Mapping";
     }
 }

@@ -4,8 +4,12 @@ import com.github.wrdlbrnft.simpleorm.annotations.AutoIncrement;
 import com.github.wrdlbrnft.simpleorm.annotations.Column;
 import com.github.wrdlbrnft.simpleorm.annotations.Id;
 import com.github.wrdlbrnft.simpleorm.annotations.Unique;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterInfo;
+
+import java.util.List;
 
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 /**
@@ -25,6 +29,7 @@ class GetterSetterPair {
     private Column mColumnAnnotation;
     private ExecutableElement mSetterMethod;
     private ExecutableElement mGetterMethod;
+    private List<TypeAdapterInfo> mTypeAdapters;
 
     GetterSetterPair(String identifier) {
         mIdentifier = identifier;
@@ -96,5 +101,13 @@ class GetterSetterPair {
 
     public void setGetterMethod(ExecutableElement getterMethod) {
         mGetterMethod = getterMethod;
+    }
+
+    public void setTypeAdapters(List<TypeAdapterInfo> typeAdapters) {
+        mTypeAdapters = typeAdapters;
+    }
+
+    public List<TypeAdapterInfo> getTypeAdapters() {
+        return mTypeAdapters;
     }
 }

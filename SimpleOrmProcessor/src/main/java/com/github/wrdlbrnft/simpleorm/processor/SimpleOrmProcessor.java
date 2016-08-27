@@ -6,6 +6,8 @@ import com.github.wrdlbrnft.simpleorm.annotations.Database;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.databases.DatabaseAnalyzer;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.databases.DatabaseInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterAnalyzer;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterManager;
 import com.github.wrdlbrnft.simpleorm.processor.builder.databases.factory.DatabaseFactoryBuilder;
 import com.github.wrdlbrnft.simpleorm.processor.builder.f.FieldConstantsClassBuilder;
 import com.github.wrdlbrnft.simpleorm.processor.builder.f.FieldInfo;
@@ -33,6 +35,7 @@ import javax.tools.Diagnostic;
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 public class SimpleOrmProcessor extends AbstractProcessor {
 
+    private TypeAdapterAnalyzer mTypeAdapterAnalyzer;
     private DatabaseAnalyzer mDatabaseAnalyzer;
     private FieldConstantsClassBuilder mFieldConstantsClassBuilder;
     private DatabaseFactoryBuilder mDatabaseFactoryBuilder;
@@ -40,6 +43,7 @@ public class SimpleOrmProcessor extends AbstractProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
+        mTypeAdapterAnalyzer = new TypeAdapterAnalyzer(processingEnv);
         mDatabaseAnalyzer = new DatabaseAnalyzer(processingEnv);
         mFieldConstantsClassBuilder = new FieldConstantsClassBuilder(processingEnv);
         mDatabaseFactoryBuilder = new DatabaseFactoryBuilder(processingEnv);
@@ -48,9 +52,10 @@ public class SimpleOrmProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 
-        final List<TypeElement> databases = getDatabases(roundEnv);
+        final TypeAdapterManager adapterManager = mTypeAdapterAnalyzer.analyze(roundEnv);
         try {
-            final List<DatabaseInfo> databaseInfos = mDatabaseAnalyzer.analyze(databases);
+            final List<TypeElement> databases = getDatabases(roundEnv);
+            final List<DatabaseInfo> databaseInfos = mDatabaseAnalyzer.analyze(databases, adapterManager);
             final Set<EntityInfo> entityInfos = getAllEntityInfos(databaseInfos);
             final List<FieldInfo> fieldInfos = mFieldConstantsClassBuilder.build(entityInfos);
             for (DatabaseInfo databaseInfo : databaseInfos) {

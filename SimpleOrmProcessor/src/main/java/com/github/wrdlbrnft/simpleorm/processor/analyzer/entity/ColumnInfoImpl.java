@@ -1,9 +1,13 @@
 package com.github.wrdlbrnft.simpleorm.processor.analyzer.entity;
 
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterInfo;
+
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 /**
@@ -17,16 +21,18 @@ class ColumnInfoImpl implements ColumnInfo {
     private final TypeMirror mTypeMirror;
     private final Set<Constraint> mConstraints;
     private final String mColumnName;
+    private final List<TypeAdapterInfo> mTypeAdapters;
     private final EntityInfo mChildEntityInfo;
     private final String mIdentifier;
     private final ExecutableElement mGetter;
     private final ExecutableElement mSetter;
 
-    ColumnInfoImpl(ColumnType columnType, TypeMirror typeMirror, Set<Constraint> constraints, String columnName, EntityInfo childEntityInfo, String identifier, ExecutableElement getter, ExecutableElement setter) {
+    ColumnInfoImpl(ColumnType columnType, TypeMirror typeMirror, Set<Constraint> constraints, String columnName, List<TypeAdapterInfo> typeAdapters, EntityInfo childEntityInfo, String identifier, ExecutableElement getter, ExecutableElement setter) {
         mColumnType = columnType;
         mTypeMirror = typeMirror;
         mConstraints = Collections.unmodifiableSet(constraints);
         mColumnName = columnName;
+        mTypeAdapters = typeAdapters;
         mChildEntityInfo = childEntityInfo;
         mIdentifier = identifier;
         mGetter = getter;
@@ -46,6 +52,11 @@ class ColumnInfoImpl implements ColumnInfo {
     @Override
     public Set<Constraint> getConstraints() {
         return mConstraints;
+    }
+
+    @Override
+    public List<TypeAdapterInfo> getTypeAdapters() {
+        return mTypeAdapters;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.github.wrdlbrnft.simpleorm.entities;
 
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * Created with Android Studio
@@ -10,5 +11,5 @@ import java.util.Iterator;
 
 public interface EntityIterator<T> extends Iterator<T> {
     int size();
-    void close();
+    List<T> asList();
 }

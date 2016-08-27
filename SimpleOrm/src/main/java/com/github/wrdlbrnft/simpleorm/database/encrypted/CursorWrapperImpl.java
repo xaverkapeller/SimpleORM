@@ -38,6 +38,11 @@ class CursorWrapperImpl implements CursorWrapper {
     }
 
     @Override
+    public long getLong(int index) {
+        return mCursor.getLong(index);
+    }
+
+    @Override
     public short getShort(int index) {
         return mCursor.getShort(index);
     }
@@ -55,6 +60,11 @@ class CursorWrapperImpl implements CursorWrapper {
     @Override
     public Integer getIntOrNull(int index) {
         return mCursor.isNull(index) ? null : mCursor.getInt(index);
+    }
+
+    @Override
+    public Long getLongOrNull(int index) {
+        return mCursor.isNull(index) ? null : mCursor.getLong(index);
     }
 
     @Override
@@ -80,6 +90,11 @@ class CursorWrapperImpl implements CursorWrapper {
     @Override
     public boolean moveToNext() {
         return mCursor.moveToNext();
+    }
+
+    @Override
+    public boolean moveToPosition(int position) {
+        return mCursor.moveToPosition(position);
     }
 
     @Override

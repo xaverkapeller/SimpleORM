@@ -31,6 +31,12 @@ public interface Selection {
             return this;
         }
 
+        public Builder isNull(String column) {
+            appendOperator();
+            mBuilder.append(column).append(" IS NULL");
+            return this;
+        }
+
         public Builder and() {
             mOperator = OPERATOR_AND;
             return this;

@@ -1,6 +1,5 @@
 package com.github.wrdlbrnft.simpleorm.repository;
 
-import com.github.wrdlbrnft.simpleorm.entities.EntityIterator;
 import com.github.wrdlbrnft.simpleorm.Loader;
 import com.github.wrdlbrnft.simpleorm.Ordering;
 import com.github.wrdlbrnft.simpleorm.QueryBuilder;
@@ -134,7 +133,7 @@ class QueryBuilderImpl<T> implements QueryBuilder<T> {
     }
 
     @Override
-    public EntityIterator<T> lazy() {
+    public List<T> lazy() {
         final QueryParametersImpl parameters = new QueryParametersImpl(mSelectionBuilder.build(), mLimit, mOrderBy);
         return mResolver.queryLazy(parameters);
     }

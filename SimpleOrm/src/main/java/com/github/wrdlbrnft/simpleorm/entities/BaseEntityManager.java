@@ -25,11 +25,7 @@ public abstract class BaseEntityManager<T> implements EntityManager<T> {
     public T queryFirst(QueryParameters parameters) {
         final ReadableSQLiteWrapper wrapper = mWrapperProvider.getReadableWrapper();
         final EntityIterator<T> iterator = performQuery(wrapper, parameters);
-        try {
-            return iterator.next();
-        } finally {
-            iterator.close();
-        }
+        return iterator.next();
     }
 
     @Override
@@ -37,21 +33,17 @@ public abstract class BaseEntityManager<T> implements EntityManager<T> {
         final ReadableSQLiteWrapper wrapper = mWrapperProvider.getReadableWrapper();
         final EntityIterator<T> iterator = performQuery(wrapper, parameters);
 
-        try {
-            final List<T> entities = new ArrayList<>();
-            while (iterator.hasNext()) {
-                entities.add(iterator.next());
-            }
-            return entities;
-        } finally {
-            iterator.close();
+        final List<T> entities = new ArrayList<>();
+        while (iterator.hasNext()) {
+            entities.add(iterator.next());
         }
+        return entities;
     }
 
     @Override
-    public EntityIterator<T> queryLazy(QueryParameters parameters) {
+    public List<T> queryLazy(QueryParameters parameters) {
         final ReadableSQLiteWrapper wrapper = mWrapperProvider.getReadableWrapper();
-        return performQuery(wrapper, parameters);
+        return performQuery(wrapper, parameters).asList();
     }
 
     @Override

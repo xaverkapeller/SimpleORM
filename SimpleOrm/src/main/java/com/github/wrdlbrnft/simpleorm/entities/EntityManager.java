@@ -10,7 +10,7 @@ import java.util.List;
 public interface EntityManager<T> {
     T queryFirst(QueryParameters parameters);
     List<T> queryList(QueryParameters parameters);
-    EntityIterator<T> queryLazy(QueryParameters parameters);
+    List<T> queryLazy(QueryParameters parameters);
     void commitSaveTransaction(SaveParameters<T> parameters);
     void commitRemoveTransaction(RemoveParameters<T> parameters);
 }

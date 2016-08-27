@@ -25,8 +25,8 @@ class WritableSQLiteWrapperImpl implements WritableSQLiteWrapper {
     }
 
     @Override
-    public void insert(String tableName, ContentValues values) {
-        mDatabase.insertWithOnConflict(tableName, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    public long insert(String tableName, ContentValues values) {
+        return mDatabase.insertWithOnConflict(tableName, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     @Override

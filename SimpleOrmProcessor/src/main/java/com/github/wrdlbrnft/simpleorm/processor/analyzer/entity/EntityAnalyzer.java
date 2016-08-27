@@ -1,6 +1,5 @@
 package com.github.wrdlbrnft.simpleorm.processor.analyzer.entity;
 
-import com.github.wrdlbrnft.codebuilder.util.MapBuilder;
 import com.github.wrdlbrnft.codebuilder.util.ProcessingHelper;
 import com.github.wrdlbrnft.simpleorm.annotations.AutoIncrement;
 import com.github.wrdlbrnft.simpleorm.annotations.Column;
@@ -18,11 +17,11 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.Missi
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.MultipleGetterException;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.MultipleIdColumnsException;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.SetterWithoutParametersException;
-import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.UnsupportedFieldTypeException;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterManager;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterResult;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,30 +49,15 @@ public class EntityAnalyzer {
 
     private final ProcessingEnvironment mProcessingEnvironment;
     private final ProcessingHelper mProcessingHelper;
-    private final Map<TypeMirror, ColumnType> mTypeMap;
     private final NoType mVoidType;
 
     public EntityAnalyzer(ProcessingEnvironment processingEnvironment) {
         mProcessingEnvironment = processingEnvironment;
         mProcessingHelper = ProcessingHelper.from(processingEnvironment);
-        mTypeMap = new MapBuilder<TypeMirror, ColumnType>()
-                .put(mProcessingHelper.getTypeMirror(int.class), ColumnType.INT)
-                .put(mProcessingHelper.getTypeMirror(Integer.class), ColumnType.INT)
-                .put(mProcessingHelper.getTypeMirror(long.class), ColumnType.LONG)
-                .put(mProcessingHelper.getTypeMirror(Long.class), ColumnType.LONG)
-                .put(mProcessingHelper.getTypeMirror(boolean.class), ColumnType.BOOLEAN)
-                .put(mProcessingHelper.getTypeMirror(Boolean.class), ColumnType.BOOLEAN)
-                .put(mProcessingHelper.getTypeMirror(float.class), ColumnType.FLOAT)
-                .put(mProcessingHelper.getTypeMirror(Float.class), ColumnType.FLOAT)
-                .put(mProcessingHelper.getTypeMirror(double.class), ColumnType.DOUBLE)
-                .put(mProcessingHelper.getTypeMirror(Double.class), ColumnType.DOUBLE)
-                .put(mProcessingHelper.getTypeMirror(Date.class), ColumnType.DATE)
-                .put(mProcessingHelper.getTypeMirror(String.class), ColumnType.STRING)
-                .build();
         mVoidType = processingEnvironment.getTypeUtils().getNoType(TypeKind.VOID);
     }
 
-    public EntityInfo analyze(TypeElement entity) throws InvalidEntityException {
+    public EntityInfo analyze(TypeElement entity, TypeAdapterManager adapterManager) throws InvalidEntityException {
         final String entityClassName = entity.getQualifiedName().toString();
         final EntityInfo cachedInfo = mCache.get(entityClassName);
         if (cachedInfo != null) {
@@ -86,11 +70,11 @@ public class EntityAnalyzer {
         final String tableName = entityAnnotation.value();
 
         final List<? extends Element> members = getMembers(entity);
-        final Map<String, GetterSetterPair> getterSetterMap = createGetterSetterMap(members);
+        final Map<String, GetterSetterPair> getterSetterMap = createGetterSetterMap(members, adapterManager);
         ColumnInfo idColumn = null;
         final List<ColumnInfo> columns = new ArrayList<>();
         for (GetterSetterPair pair : getterSetterMap.values()) {
-            final ColumnInfo columnInfo = createColumnInfo(pair);
+            final ColumnInfo columnInfo = createColumnInfo(pair, adapterManager);
             if (pair.getIdAnnotation() != null) {
                 if (idColumn != null) {
                     throw new MultipleIdColumnsException("The entity " + entity.getSimpleName() + " has more than one Id columns.", entity);
@@ -123,7 +107,7 @@ public class EntityAnalyzer {
         return entity.getEnclosedElements();
     }
 
-    private Map<String, GetterSetterPair> createGetterSetterMap(List<? extends Element> members) {
+    private Map<String, GetterSetterPair> createGetterSetterMap(List<? extends Element> members, TypeAdapterManager adapterManager) {
         final Map<String, GetterSetterPair> pairMap = new HashMap<>();
         for (Element member : members) {
             if (member.getKind() != ElementKind.METHOD) {
@@ -149,13 +133,16 @@ public class EntityAnalyzer {
                     throw new GetterWithParametersException("The getter " + name + " has one or more parameters. Getters are not allowed to have any parameters.", method);
                 }
 
-                final ColumnType type = determineColumnType(method, returnType);
+                final TypeAdapterResult result = adapterManager.resolve(returnType);
+                final ColumnType type = result.getColumnType();
                 if (pair.getColumnType() == null) {
                     pair.setColumnType(type);
                     pair.setTypeMirror(returnType);
                 } else if (pair.getColumnType() != type || !mProcessingHelper.isSameType(returnType, pair.getTypeMirror())) {
                     throw new InconsistentGetterSetterTypeException("The type of the getter " + name + " is inconsistent with its setter.", method);
                 }
+
+                pair.setTypeAdapters(result.getAdapters());
 
                 if (columnAnnotation != null) {
                     final Column existingAnnotation = pair.getColumnAnnotation();
@@ -180,13 +167,16 @@ public class EntityAnalyzer {
                 }
 
                 final TypeMirror parameterType = parameters.get(0).asType();
-                final ColumnType type = determineColumnType(method, parameterType);
+                final TypeAdapterResult result = adapterManager.resolve(parameterType);
+                final ColumnType type = result.getColumnType();
                 if (pair.getColumnType() == null) {
                     pair.setColumnType(type);
                     pair.setTypeMirror(parameterType);
                 } else if (pair.getColumnType() != type || !mProcessingHelper.isSameType(parameterType, pair.getTypeMirror())) {
                     throw new InconsistentGetterSetterTypeException("The type of the setter " + name + " is inconsistent with its getter.", method);
                 }
+
+                pair.setTypeAdapters(result.getAdapters());
 
                 if (columnAnnotation != null) {
                     final Column existingAnnotation = pair.getColumnAnnotation();
@@ -221,17 +211,18 @@ public class EntityAnalyzer {
         }
     }
 
-    private ColumnType determineColumnType(ExecutableElement methodElement, TypeMirror typeMirror) {
-        final ColumnType type = mTypeMap.get(typeMirror);
-        if (type == null) {
-            final TypeElement element = (TypeElement) mProcessingEnvironment.getTypeUtils().asElement(typeMirror);
-            if (element.getAnnotation(Entity.class) != null) {
-                return ColumnType.ENTITY;
-            }
-            throw new UnsupportedFieldTypeException("The type of method " + methodElement.getSimpleName() + " is not supported", methodElement);
-        }
-        return type;
-    }
+//    private ColumnType determineColumnType(ExecutableElement methodElement, TypeMirror typeMirror) {
+//        final ColumnType type = mTypeMap.get(typeMirror);
+//        if (type == null) {
+////            TODO: Uncomment this to enable child entities.
+////            final TypeElement element = (TypeElement) mProcessingEnvironment.getTypeUtils().asElement(typeMirror);
+////            if (element.getAnnotation(Entity.class) != null) {
+////                return ColumnType.ENTITY;
+////            }
+//            throw new UnsupportedFieldTypeException("The type of method " + methodElement.getSimpleName() + " is not supported", methodElement);
+//        }
+//        return type;
+//    }
 
     private GetterSetterPair getGetterSetterPair(Map<String, GetterSetterPair> pairMap, String key) {
         if (pairMap.containsKey(key)) {
@@ -243,7 +234,7 @@ public class EntityAnalyzer {
         return pair;
     }
 
-    private ColumnInfo createColumnInfo(GetterSetterPair pair) {
+    private ColumnInfo createColumnInfo(GetterSetterPair pair, TypeAdapterManager adapterManager) {
         final Column columnAnnotation = pair.getColumnAnnotation();
         final ExecutableElement setter = pair.getSetterMethod();
         final ExecutableElement getter = pair.getGetterMethod();
@@ -265,10 +256,10 @@ public class EntityAnalyzer {
         }
 
         final EntityInfo childEntityInfo = pair.getColumnType() == ColumnType.ENTITY
-                ? analyze((TypeElement) mProcessingEnvironment.getTypeUtils().asElement(pair.getTypeMirror()))
+                ? analyze((TypeElement) mProcessingEnvironment.getTypeUtils().asElement(pair.getTypeMirror()), adapterManager)
                 : null;
 
-        return new ColumnInfoImpl(pair.getColumnType(), pair.getTypeMirror(), constraints, columnName, childEntityInfo, pair.getIdentifier(), getter, setter);
+        return new ColumnInfoImpl(pair.getColumnType(), pair.getTypeMirror(), constraints, columnName, pair.getTypeAdapters(), childEntityInfo, pair.getIdentifier(), getter, setter);
     }
 
     private static boolean equals(Object a, Object b) {

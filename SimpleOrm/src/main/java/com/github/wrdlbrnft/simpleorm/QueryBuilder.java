@@ -40,5 +40,5 @@ public interface QueryBuilder<T> {
     <R> QueryBuilder<T> orderBy(OrderByField<T, R> field);
     Loader<T> getFirst();
     Loader<List<T>> getList();
-    EntityIterator<T> lazy();
+    List<T> lazy();
 }

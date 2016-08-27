@@ -10,6 +10,8 @@ import com.github.wrdlbrnft.codebuilder.util.TypeDefinition;
 public class SimpleOrmTypes {
 
     public static TypeDefinition REPOSITORY = new TypeDefinition("com.github.wrdlbrnft.simpleorm", "Repository");
+    public static TypeDefinition BASE_REPOSITORY = new TypeDefinition("com.github.wrdlbrnft.simpleorm.repository", "BaseRepository");
+    public static TypeDefinition SELECTION = new TypeDefinition("com.github.wrdlbrnft.simpleorm.selection", "Selection");
 
     public static TypeDefinition SQLITE_PROVIDER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.database", "SQLiteProvider");
     public static TypeDefinition ENCRYPTED_SQLITE_PROVIDER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.database", "EncryptedSQLiteProvider");
@@ -19,14 +21,22 @@ public class SimpleOrmTypes {
     public static TypeDefinition SQLITE_DATABASE_MANAGER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.database", "SQLiteDatabaseManager");
 
     public static TypeDefinition WRITABLE_SQLITE_WRAPPER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.database", "WritableSQLiteWrapper");
+    public static TypeDefinition READABLE_SQLITE_WRAPPER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.database", "ReadableSQLiteWrapper");
+    public static TypeDefinition CURSOR_WRAPPER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.database", "CursorWrapper");
     public static TypeDefinition SAVE_PARAMETERS = new TypeDefinition("com.github.wrdlbrnft.simpleorm.entities", "SaveParameters");
     public static TypeDefinition REMOVE_PARAMETERS = new TypeDefinition("com.github.wrdlbrnft.simpleorm.entities", "RemoveParameters");
+    public static TypeDefinition QUERY_PARAMETERS = new TypeDefinition("com.github.wrdlbrnft.simpleorm.entities", "QueryParameters");
 
     public static TypeDefinition BASE_ENTITY_MANAGER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.entities", "BaseEntityManager");
-    public static TypeDefinition ENTITY_READER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.entities", "EntityReader");
+    public static TypeDefinition BASE_ENTITY_ITERATOR = new TypeDefinition("com.github.wrdlbrnft.simpleorm.entities", "BaseEntityIterator");
+    public static TypeDefinition ENTITY_ITERATOR = new TypeDefinition("com.github.wrdlbrnft.simpleorm.entities", "EntityIterator");
     public static TypeDefinition ENTITY_SAVER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.entities", "EntitySaver");
     public static TypeDefinition ENTITY_REMOVER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.entities", "EntityRemover");
     public static TypeDefinition CONTENT_VALUES = new TypeDefinition("android.content", "ContentValues");
+
+    public static TypeDefinition VALUE_CONVERTER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.adapter", "ValueConverter");
+    public static TypeDefinition DATE_TYPE_ADAPTER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.adapter.base", "DateTypeAdapter");
+    public static TypeDefinition CALENDAR_TYPE_ADAPTER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.adapter.base", "CalendarTypeAdapter");
 
     public static TypeDefinition BOOLEAN_FIELD = new TypeDefinition("com.github.wrdlbrnft.simpleorm.fields", "BooleanField");
     public static TypeDefinition BOOLEAN_FIELD_IMPL = new TypeDefinition("com.github.wrdlbrnft.simpleorm.fields.impl", "BooleanFieldImpl");
