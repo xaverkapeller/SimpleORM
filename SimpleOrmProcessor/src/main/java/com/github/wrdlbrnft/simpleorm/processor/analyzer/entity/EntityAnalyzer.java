@@ -45,6 +45,7 @@ import javax.lang.model.type.TypeMirror;
  */
 public class EntityAnalyzer {
 
+    private static final String DEFAULT_ID_COLUMN_NAME = "_id";
     private final Map<String, EntityInfo> mCache = new HashMap<>();
 
     private final ProcessingEnvironment mProcessingEnvironment;
@@ -211,19 +212,6 @@ public class EntityAnalyzer {
         }
     }
 
-//    private ColumnType determineColumnType(ExecutableElement methodElement, TypeMirror typeMirror) {
-//        final ColumnType type = mTypeMap.get(typeMirror);
-//        if (type == null) {
-////            TODO: Uncomment this to enable child entities.
-////            final TypeElement element = (TypeElement) mProcessingEnvironment.getTypeUtils().asElement(typeMirror);
-////            if (element.getAnnotation(Entity.class) != null) {
-////                return ColumnType.ENTITY;
-////            }
-//            throw new UnsupportedFieldTypeException("The type of method " + methodElement.getSimpleName() + " is not supported", methodElement);
-//        }
-//        return type;
-//    }
-
     private GetterSetterPair getGetterSetterPair(Map<String, GetterSetterPair> pairMap, String key) {
         if (pairMap.containsKey(key)) {
             return pairMap.get(key);
@@ -236,13 +224,18 @@ public class EntityAnalyzer {
 
     private ColumnInfo createColumnInfo(GetterSetterPair pair, TypeAdapterManager adapterManager) {
         final Column columnAnnotation = pair.getColumnAnnotation();
+        final Id idAnnotation = pair.getIdAnnotation();
         final ExecutableElement setter = pair.getSetterMethod();
         final ExecutableElement getter = pair.getGetterMethod();
-        if (columnAnnotation == null) {
+        final String columnName;
+        if (columnAnnotation != null) {
+            columnName = columnAnnotation.value();
+        } else if(idAnnotation != null) {
+            columnName = DEFAULT_ID_COLUMN_NAME;
+        } else {
             final ExecutableElement method = getter != null ? getter : setter;
             throw new MissingColumnAnnotationException("The @Column annotation is missing from the method " + method.getSimpleName() + ". You need to set the column name with @Column.", method);
         }
-        final String columnName = columnAnnotation.value();
 
         final Set<Constraint> constraints = new HashSet<>();
         if (pair.getIdAnnotation() != null) {

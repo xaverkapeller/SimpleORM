@@ -3,8 +3,10 @@ package com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager;
 import com.github.wrdlbrnft.codebuilder.annotations.Annotations;
 import com.github.wrdlbrnft.codebuilder.arrays.Arrays;
 import com.github.wrdlbrnft.codebuilder.code.Block;
+import com.github.wrdlbrnft.codebuilder.code.BlockWriter;
 import com.github.wrdlbrnft.codebuilder.code.CodeElement;
 import com.github.wrdlbrnft.codebuilder.elements.forloop.item.Foreach;
+import com.github.wrdlbrnft.codebuilder.elements.ifs.If;
 import com.github.wrdlbrnft.codebuilder.elements.values.Values;
 import com.github.wrdlbrnft.codebuilder.executables.Constructor;
 import com.github.wrdlbrnft.codebuilder.executables.ExecutableBuilder;
@@ -14,6 +16,7 @@ import com.github.wrdlbrnft.codebuilder.implementations.Implementation;
 import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.codebuilder.types.Types;
 import com.github.wrdlbrnft.codebuilder.util.MapBuilder;
+import com.github.wrdlbrnft.codebuilder.util.Operators;
 import com.github.wrdlbrnft.codebuilder.variables.Field;
 import com.github.wrdlbrnft.codebuilder.variables.Variable;
 import com.github.wrdlbrnft.codebuilder.variables.Variables;
@@ -44,8 +47,9 @@ import javax.lang.model.element.Modifier;
 public class EntityManagerBuilder {
 
     private static final Method METHOD_ENTITIES_TO_SAVE = Methods.stub("getEntitiesToSave");
+    private static final Method METHOD_ENTITIES_TO_REMOVE = Methods.stub("getEntitiesToRemove");
     private static final Method METHOD_PUT = Methods.stub("put");
-    private static final Method METHOD_GET_TIME = Methods.stub("getTime");
+    private static final Method METHOD_DELETE = Methods.stub("delete");
     private static final Method METHOD_INSERT = Methods.stub("insert");
     private static final Method METHOD_QUERY = Methods.stub("query");
     private static final Method METHOD_GET_SELECTION = Methods.stub("getSelection");
@@ -57,6 +61,11 @@ public class EntityManagerBuilder {
     private static final Method METHOD_MOVE_TO_POSITION = Methods.stub("moveToPosition");
     private static final Method METHOD_CONVERT_TO = Methods.stub("convertTo");
     private static final Method METHOD_CONVERT_FROM = Methods.stub("convertFrom");
+    private static final Method METHOD_OR = Methods.stub("or");
+    private static final Method METHOD_STATEMENT = Methods.stub("statement");
+    private static final Method METHOD_VALUE_OF = Methods.stub("valueOf");
+    private static final Method METHOD_BUILD = Methods.stub("build");
+    private static final Method METHOD_IS_EMPTY = Methods.stub("isEmpty");
 
     private static final Map<ColumnType, Type> COLUMN_TYPE_MAP = new MapBuilder<ColumnType, Type>()
             .put(ColumnType.PRIMITIVE_INT, Types.Primitives.INTEGER)
@@ -228,7 +237,79 @@ public class EntityManagerBuilder {
 
                     @Override
                     protected void write(Block block) {
+                        final Variable selection = Variables.of(SimpleOrmTypes.SELECTION.asType(), Modifier.FINAL);
+                        block.set(selection, METHOD_GET_SELECTION.callOnTarget(mRemoveParameters)).append(";").newLine();
 
+                        block.append(METHOD_DELETE.callOnTarget(mWritableSQLiteWrapper,
+                                Values.of(info.getTableName()),
+                                METHOD_GET_SELECTION.callOnTarget(selection),
+                                METHOD_GET_SELECTION_ARGS.callOnTarget(selection)
+                        )).append(";").newLine();
+
+
+                        final Type entityType = Types.of(info.getEntityElement());
+                        final Variable entities = Variables.of(Types.generic(Types.LIST, entityType), Modifier.FINAL);
+                        block.set(entities, METHOD_ENTITIES_TO_REMOVE.callOnTarget(mRemoveParameters)).append(";").newLine();
+
+                        block.append(new If.Builder()
+                                .add(METHOD_IS_EMPTY.callOnTarget(entities), new BlockWriter() {
+                                    @Override
+                                    protected void write(Block block) {
+                                        block.append("return;");
+                                    }
+                                })
+                                .build());
+                        block.newLine();
+
+                        final Variable builder = Variables.of(SimpleOrmTypes.SELECTION_BUILDER.asType(), Modifier.FINAL);
+                        block.set(builder, SimpleOrmTypes.SELECTION_BUILDER.asType().newInstance()).append(";").newLine();
+
+                        final ColumnInfo idColumn = info.getIdColumn();
+                        final Method idGetterMethod = Methods.from(idColumn.getGetterElement());
+
+                        block.append(new Foreach.Builder()
+                                .setCollection(entities)
+                                .setItemType(entityType)
+                                .setIteration(new Foreach.Iteration() {
+                                    @Override
+                                    public void onIteration(Block block, Variable entity) {
+                                        final Variable id = Variables.of(Types.Boxed.LONG, Modifier.FINAL);
+                                        block.set(id, applyAdaptersConvertFrom(idColumn.getTypeAdapters(), idGetterMethod.callOnTarget(entity))).append(";").newLine();
+                                        block.append(new If.Builder()
+                                                .add(Operators.operate(id, "!=", Values.ofNull()), new BlockWriter() {
+                                                    @Override
+                                                    protected void write(Block block) {
+                                                        block.append(METHOD_OR.callOnTarget(METHOD_STATEMENT.callOnTarget(builder,
+                                                                Values.of(idColumn.getColumnName()),
+                                                                Values.of("="),
+                                                                METHOD_VALUE_OF.callOnTarget(Types.STRING, id)
+                                                        ))).append(";");
+                                                    }
+                                                })
+                                                .build());
+                                    }
+
+                                    private CodeElement applyAdaptersConvertFrom(List<TypeAdapterInfo> typeAdapters, CodeElement codeElement) {
+                                        if (typeAdapters.isEmpty()) {
+                                            return codeElement;
+                                        }
+
+                                        final int lastIndex = typeAdapters.size() - 1;
+                                        final TypeAdapterInfo info = typeAdapters.get(lastIndex);
+                                        final Field field = adapterFieldMap.get(info);
+                                        return METHOD_CONVERT_FROM.callOnTarget(field, applyAdaptersConvertFrom(typeAdapters.subList(0, lastIndex), codeElement));
+                                    }
+                                })
+                                .build());
+                        block.newLine();
+
+                        final Variable entitySelection = Variables.of(SimpleOrmTypes.SELECTION.asType(), Modifier.FINAL);
+                        block.set(entitySelection, METHOD_BUILD.callOnTarget(builder)).append(";").newLine();
+                        block.append(METHOD_DELETE.callOnTarget(mWritableSQLiteWrapper,
+                                Values.of(info.getTableName()),
+                                METHOD_GET_SELECTION.callOnTarget(entitySelection),
+                                METHOD_GET_SELECTION_ARGS.callOnTarget(entitySelection)
+                        )).append(";");
                     }
                 })
                 .build());
@@ -299,7 +380,7 @@ public class EntityManagerBuilder {
         for (ColumnInfo columnInfo : info.getColumns()) {
             final Field indexField = new Field.Builder()
                     .setType(Types.Primitives.INTEGER)
-                    .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC))
+                    .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.FINAL))
                     .build();
             builder.addField(indexField);
             indexFieldMap.put(columnInfo, indexField);

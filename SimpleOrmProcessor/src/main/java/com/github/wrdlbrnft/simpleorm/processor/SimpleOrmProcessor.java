@@ -9,6 +9,7 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterAnalyzer;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterManager;
 import com.github.wrdlbrnft.simpleorm.processor.builder.databases.factory.DatabaseFactoryBuilder;
+import com.github.wrdlbrnft.simpleorm.processor.builder.entitybuilder.EntityBuilderBuilder;
 import com.github.wrdlbrnft.simpleorm.processor.builder.f.FieldConstantsClassBuilder;
 import com.github.wrdlbrnft.simpleorm.processor.builder.f.FieldInfo;
 
@@ -39,6 +40,7 @@ public class SimpleOrmProcessor extends AbstractProcessor {
     private DatabaseAnalyzer mDatabaseAnalyzer;
     private FieldConstantsClassBuilder mFieldConstantsClassBuilder;
     private DatabaseFactoryBuilder mDatabaseFactoryBuilder;
+    private EntityBuilderBuilder mBuilderBuilder;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -47,6 +49,7 @@ public class SimpleOrmProcessor extends AbstractProcessor {
         mDatabaseAnalyzer = new DatabaseAnalyzer(processingEnv);
         mFieldConstantsClassBuilder = new FieldConstantsClassBuilder(processingEnv);
         mDatabaseFactoryBuilder = new DatabaseFactoryBuilder(processingEnv);
+        mBuilderBuilder = new EntityBuilderBuilder(processingEnv);
     }
 
     @Override
@@ -64,6 +67,14 @@ public class SimpleOrmProcessor extends AbstractProcessor {
                 databaseSourceFile.write(mDatabaseFactoryBuilder.build(databaseInfo));
                 databaseSourceFile.flushAndClose();
             }
+
+            for (EntityInfo entityInfo : entityInfos) {
+                final String packageName = Utils.getPackageName(entityInfo.getEntityElement());
+                final SourceFile builderSourceFile = SourceFile.create(processingEnv, packageName);
+                builderSourceFile.write(mBuilderBuilder.build(entityInfo));
+                builderSourceFile.flushAndClose();
+            }
+
         } catch (IOException e) {
             processingEnv.getMessager().printMessage(
                     Diagnostic.Kind.NOTE,

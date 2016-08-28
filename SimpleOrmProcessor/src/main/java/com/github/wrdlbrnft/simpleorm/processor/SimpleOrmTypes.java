@@ -12,6 +12,7 @@ public class SimpleOrmTypes {
     public static TypeDefinition REPOSITORY = new TypeDefinition("com.github.wrdlbrnft.simpleorm", "Repository");
     public static TypeDefinition BASE_REPOSITORY = new TypeDefinition("com.github.wrdlbrnft.simpleorm.repository", "BaseRepository");
     public static TypeDefinition SELECTION = new TypeDefinition("com.github.wrdlbrnft.simpleorm.selection", "Selection");
+    public static TypeDefinition SELECTION_BUILDER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.selection", "Selection.Builder");
 
     public static TypeDefinition SQLITE_PROVIDER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.database", "SQLiteProvider");
     public static TypeDefinition ENCRYPTED_SQLITE_PROVIDER = new TypeDefinition("com.github.wrdlbrnft.simpleorm.database", "EncryptedSQLiteProvider");

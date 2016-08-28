@@ -39,7 +39,7 @@ public class EntityImplementationBuilder {
         mProcessingEnvironment = processingEnvironment;
     }
 
-    public EntityImplementationInfo build(EntityInfo info) {
+    public EntityImplementationInfo build(final EntityInfo info) {
         final Implementation.Builder builder = new Implementation.Builder();
         builder.setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC));
         builder.addImplementedType(Types.of(info.getEntityElement()));
@@ -69,10 +69,18 @@ public class EntityImplementationBuilder {
 
                     @Override
                     protected void write(Block block) {
+                        boolean insertNewLine = false;
                         for (ColumnInfo columnInfo : constructorParameters) {
                             final Variable parameter = mParameterMap.get(columnInfo);
                             final Field field = fieldMap.get(columnInfo);
-                            block.set(field, parameter).append(";").newLine();
+
+                            if(insertNewLine) {
+                                block.newLine();
+                            } else {
+                                insertNewLine = true;
+                            }
+
+                            block.set(field, parameter).append(";");
                         }
                     }
                 })
