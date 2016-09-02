@@ -4,6 +4,7 @@ import com.github.wrdlbrnft.codebuilder.util.MapBuilder;
 import com.github.wrdlbrnft.codebuilder.util.ProcessingHelper;
 import com.github.wrdlbrnft.codebuilder.util.Utils;
 import com.github.wrdlbrnft.simpleorm.annotations.ColumnTypeAdapter;
+import com.github.wrdlbrnft.simpleorm.annotations.Entity;
 import com.github.wrdlbrnft.simpleorm.processor.SimpleOrmTypes;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnType;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.exceptions.TypeAdapterException;
@@ -38,6 +39,7 @@ public class TypeAdapterAnalyzer {
     private final ProcessingEnvironment mProcessingEnv;
     private final ProcessingHelper mHelper;
     private final TypeElement mValueConverterElement;
+    private final TypeMirror mListTypeMirror;
     private final Map<TypeMirror, ColumnType> mTypeMap;
     private final Map<String, TypeAdapterResult> mInfoMap = new HashMap<>();
 
@@ -48,6 +50,20 @@ public class TypeAdapterAnalyzer {
             final TypeAdapterResult info = mInfoMap.get(fullClassName);
             if (info == null) {
                 final TypeElement typeElement = mHelper.getTypeElement(type);
+                if (typeElement.getAnnotation(Entity.class) != null) {
+                    return new TypeAdapterResultImpl(Collections.<TypeAdapterInfo>emptyList(), ColumnType.ENTITY, type, TypeAdapterResult.Type.OBJECT);
+                }
+                if (mHelper.isSameType(mListTypeMirror, type)) {
+                    final List<TypeMirror> listParameters = Utils.getTypeParameters(type);
+                    if (listParameters.size() != 1) {
+                        throw new UnsupportedTypeException("You need to specify a proper type parameter for your List column!", typeElement);
+                    }
+                    final TypeMirror componentType = listParameters.get(0);
+                    final TypeElement componentElement = mHelper.getTypeElement(componentType);
+                    if (componentElement.getAnnotation(Entity.class) != null) {
+                        return new TypeAdapterResultImpl(Collections.<TypeAdapterInfo>emptyList(), ColumnType.ENTITY, componentType, TypeAdapterResult.Type.LIST);
+                    }
+                }
                 throw new UnsupportedTypeException("Failed to find adapter for type " + typeElement.getSimpleName(), typeElement);
             }
             return info;
@@ -58,6 +74,7 @@ public class TypeAdapterAnalyzer {
         mProcessingEnv = processingEnv;
         mHelper = new ProcessingHelper(processingEnv);
         mValueConverterElement = SimpleOrmTypes.VALUE_CONVERTER.asTypeElement(processingEnv);
+        mListTypeMirror = mHelper.getTypeMirror(List.class);
         mTypeMap = new MapBuilder<TypeMirror, ColumnType>()
                 .put(mHelper.getTypeMirror(int.class), ColumnType.PRIMITIVE_INT)
                 .put(mHelper.getTypeMirror(Integer.class), ColumnType.INT)
@@ -74,22 +91,22 @@ public class TypeAdapterAnalyzer {
 
         for (TypeMirror typeMirror : mTypeMap.keySet()) {
             final ColumnType type = mTypeMap.get(typeMirror);
-            final TypeAdapterResultImpl value = new TypeAdapterResultImpl(Collections.<TypeAdapterInfo>emptyList(), type);
+            final TypeAdapterResultImpl value = new TypeAdapterResultImpl(Collections.<TypeAdapterInfo>emptyList(), type, typeMirror, TypeAdapterResult.Type.OBJECT);
             mInfoMap.put(typeMirror.toString(), value);
         }
 
         mInfoMap.put(Date.class.getCanonicalName(), new TypeAdapterResultImpl(
                 Collections.<TypeAdapterInfo>singletonList(new TypeAdapterInfoImpl(SimpleOrmTypes.DATE_TYPE_ADAPTER.asTypeElement(processingEnv), mHelper.getTypeMirror(Long.class), mHelper.getTypeMirror(Date.class))),
-                ColumnType.DATE
-        ));
+                ColumnType.DATE,
+                mHelper.getTypeMirror(Date.class), TypeAdapterResult.Type.OBJECT));
 
         mInfoMap.put(Calendar.class.getCanonicalName(), new TypeAdapterResultImpl(
                 Arrays.<TypeAdapterInfo>asList(
                         new TypeAdapterInfoImpl(SimpleOrmTypes.CALENDAR_TYPE_ADAPTER.asTypeElement(processingEnv), mHelper.getTypeMirror(Date.class), mHelper.getTypeMirror(Calendar.class)),
                         new TypeAdapterInfoImpl(SimpleOrmTypes.DATE_TYPE_ADAPTER.asTypeElement(processingEnv), mHelper.getTypeMirror(Long.class), mHelper.getTypeMirror(Date.class))
                 ),
-                ColumnType.DATE
-        ));
+                ColumnType.DATE,
+                mHelper.getTypeMirror(Calendar.class), TypeAdapterResult.Type.OBJECT));
     }
 
     public TypeAdapterManager analyze(RoundEnvironment roundEnv) {
@@ -118,7 +135,7 @@ public class TypeAdapterAnalyzer {
         for (TypeAdapterInfo adapterInfo : adapterInfos) {
             try {
                 final TypeMirror type = adapterInfo.getToType();
-                final TypeAdapterResult result = resolve(adapterInfo, adapterInfos, new ArrayList<TypeAdapterInfo>());
+                final TypeAdapterResult result = resolve(type, adapterInfo, adapterInfos, new ArrayList<TypeAdapterInfo>());
                 mInfoMap.put(type.toString(), result);
             } catch (TypeAdapterException e) {
                 mProcessingEnv.getMessager().printMessage(
@@ -132,17 +149,17 @@ public class TypeAdapterAnalyzer {
         return mManager;
     }
 
-    private TypeAdapterResult resolve(TypeAdapterInfo adapterInfo, List<TypeAdapterInfo> allAdapters, List<TypeAdapterInfo> resolvedAdapters) {
+    private TypeAdapterResult resolve(TypeMirror type, TypeAdapterInfo adapterInfo, List<TypeAdapterInfo> allAdapters, List<TypeAdapterInfo> resolvedAdapters) {
         resolvedAdapters.add(adapterInfo);
 
         final TypeMirror fromType = adapterInfo.getFromType();
         final ColumnType columnType = mTypeMap.get(fromType);
         if (columnType == null) {
             final TypeAdapterInfo adapter = findAdapterFor(allAdapters, fromType);
-            return resolve(adapter, allAdapters, resolvedAdapters);
+            return resolve(type, adapter, allAdapters, resolvedAdapters);
         }
 
-        return new TypeAdapterResultImpl(resolvedAdapters, columnType);
+        return new TypeAdapterResultImpl(resolvedAdapters, columnType, type, TypeAdapterResult.Type.OBJECT);
     }
 
     private TypeAdapterInfo findAdapterFor(List<TypeAdapterInfo> allAdapters, TypeMirror type) {
@@ -210,10 +227,14 @@ public class TypeAdapterAnalyzer {
 
         private final List<TypeAdapterInfo> mAdapters;
         private final ColumnType mColumnType;
+        private final TypeMirror mTypeMirror;
+        private final Type mType;
 
-        private TypeAdapterResultImpl(List<TypeAdapterInfo> adapters, ColumnType columnType) {
+        private TypeAdapterResultImpl(List<TypeAdapterInfo> adapters, ColumnType columnType, TypeMirror typeMirror, Type type) {
             mAdapters = adapters;
             mColumnType = columnType;
+            mTypeMirror = typeMirror;
+            mType = type;
         }
 
         @Override
@@ -224,6 +245,16 @@ public class TypeAdapterAnalyzer {
         @Override
         public ColumnType getColumnType() {
             return mColumnType;
+        }
+
+        @Override
+        public TypeMirror getTypeMirror() {
+            return mTypeMirror;
+        }
+
+        @Override
+        public Type getResultType() {
+            return mType;
         }
     }
 }

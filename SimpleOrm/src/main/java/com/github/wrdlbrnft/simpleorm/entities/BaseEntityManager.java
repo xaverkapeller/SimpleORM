@@ -1,8 +1,11 @@
 package com.github.wrdlbrnft.simpleorm.entities;
 
+import android.util.Log;
+
 import com.github.wrdlbrnft.simpleorm.database.ReadableSQLiteWrapper;
 import com.github.wrdlbrnft.simpleorm.database.SQLiteProvider;
 import com.github.wrdlbrnft.simpleorm.database.WritableSQLiteWrapper;
+import com.github.wrdlbrnft.simpleorm.exceptions.SimpleOrmException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +17,8 @@ import java.util.List;
  */
 
 public abstract class BaseEntityManager<T> implements EntityManager<T> {
+
+    private static final String TAG = "BaseEntityManager";
 
     private final SQLiteProvider mWrapperProvider;
 
@@ -53,6 +58,9 @@ public abstract class BaseEntityManager<T> implements EntityManager<T> {
             wrapper.beginTransaction();
             performSave(wrapper, parameters);
             wrapper.setTransactionSuccessFul();
+        } catch (Exception e) {
+            Log.e(TAG, "Exception while saving entities.", e);
+            throw new SimpleOrmException("Failed to save entities", e);
         } finally {
             wrapper.endTransaction();
         }
@@ -65,8 +73,17 @@ public abstract class BaseEntityManager<T> implements EntityManager<T> {
             wrapper.beginTransaction();
             performRemove(wrapper, parameters);
             wrapper.setTransactionSuccessFul();
+        } catch (Exception e) {
+            Log.e(TAG, "Exception while removing entities.", e);
+            throw new SimpleOrmException("Failed to save entities", e);
         } finally {
             wrapper.endTransaction();
+        }
+    }
+
+    protected <E> void verifyIdOrThrow(long id, E entity) throws SimpleOrmException {
+        if (id < 0) {
+            throw new SimpleOrmException("Failed to save entity: " + entity);
         }
     }
 

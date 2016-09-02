@@ -3,6 +3,10 @@ package com.github.wrdlbrnft.simpleorm.selection;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.github.wrdlbrnft.simpleorm.selection.OperatorElement.OPERATOR_AND;
+import static com.github.wrdlbrnft.simpleorm.selection.OperatorElement.OPERATOR_NONE;
+import static com.github.wrdlbrnft.simpleorm.selection.OperatorElement.OPERATOR_OR;
+
 /**
  * Created with Android Studio
  * User: Xaver
@@ -10,30 +14,31 @@ import java.util.List;
  */
 public interface Selection {
 
-    String getSelection();
+    String getSelection(String tableName);
     String[] getSelectionArgs();
+
+    boolean isEmpty();
 
     class Builder {
 
-        private static final int OPERATOR_NONE = 0x00;
-        private static final int OPERATOR_AND = 0x01;
-        private static final int OPERATOR_OR = 0x02;
-
         private int mOperator = OPERATOR_NONE;
 
-        private final StringBuilder mBuilder = new StringBuilder();
+        private final List<SelectionElement> mStatements = new ArrayList<>();
         private final List<String> mArguments = new ArrayList<>();
+
+        public Builder() {
+        }
 
         public Builder statement(String column, String operator, String argument) {
             appendOperator();
-            mBuilder.append(column).append(" ").append(operator).append(" ?");
+            mStatements.add(new SelectionStatement(column, operator + " ?"));
             mArguments.add(argument);
             return this;
         }
 
         public Builder isNull(String column) {
             appendOperator();
-            mBuilder.append(column).append(" IS NULL");
+            mStatements.add(new SelectionStatement(column, "IS NULL"));
             return this;
         }
 
@@ -49,7 +54,7 @@ public interface Selection {
 
         public Selection build() {
             return new SelectionImpl(
-                    mBuilder.toString(),
+                    mStatements,
                     mArguments.toArray(new String[mArguments.size()])
             );
         }
@@ -58,9 +63,10 @@ public interface Selection {
             if (mOperator == OPERATOR_NONE) {
                 mOperator = OPERATOR_AND;
             } else if (mOperator == OPERATOR_AND) {
-                mBuilder.append(" AND ");
-            } else {
-                mBuilder.append(" OR ");
+                mStatements.add(new OperatorElement(mOperator));
+            } else if (mOperator == OPERATOR_OR) {
+                mStatements.add(new OperatorElement(mOperator));
+                mOperator = OPERATOR_AND;
             }
         }
     }

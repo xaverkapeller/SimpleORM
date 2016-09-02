@@ -136,10 +136,13 @@ public class EntityAnalyzer {
 
                 final TypeAdapterResult result = adapterManager.resolve(returnType);
                 final ColumnType type = result.getColumnType();
+                final TypeMirror resultType = result.getTypeMirror();
+                final ColumnInfo.CollectionType collectionType = parseCollectionType(result.getResultType());
                 if (pair.getColumnType() == null) {
                     pair.setColumnType(type);
-                    pair.setTypeMirror(returnType);
-                } else if (pair.getColumnType() != type || !mProcessingHelper.isSameType(returnType, pair.getTypeMirror())) {
+                    pair.setTypeMirror(resultType);
+                    pair.setCollectionType(collectionType);
+                } else if (pair.getColumnType() != type || !mProcessingHelper.isSameType(resultType, pair.getTypeMirror()) || pair.getCollectionType() != collectionType) {
                     throw new InconsistentGetterSetterTypeException("The type of the getter " + name + " is inconsistent with its setter.", method);
                 }
 
@@ -170,10 +173,13 @@ public class EntityAnalyzer {
                 final TypeMirror parameterType = parameters.get(0).asType();
                 final TypeAdapterResult result = adapterManager.resolve(parameterType);
                 final ColumnType type = result.getColumnType();
+                final TypeMirror resultType = result.getTypeMirror();
+                final ColumnInfo.CollectionType collectionType = parseCollectionType(result.getResultType());
                 if (pair.getColumnType() == null) {
                     pair.setColumnType(type);
-                    pair.setTypeMirror(parameterType);
-                } else if (pair.getColumnType() != type || !mProcessingHelper.isSameType(parameterType, pair.getTypeMirror())) {
+                    pair.setTypeMirror(resultType);
+                    pair.setCollectionType(collectionType);
+                } else if (pair.getColumnType() != type || !mProcessingHelper.isSameType(resultType, pair.getTypeMirror()) || pair.getCollectionType() != collectionType) {
                     throw new InconsistentGetterSetterTypeException("The type of the setter " + name + " is inconsistent with its getter.", method);
                 }
 
@@ -193,6 +199,20 @@ public class EntityAnalyzer {
             }
         }
         return pairMap;
+    }
+
+    private ColumnInfo.CollectionType parseCollectionType(TypeAdapterResult.Type resultType) {
+        switch (resultType) {
+
+            case OBJECT:
+                return ColumnInfo.CollectionType.NONE;
+
+            case LIST:
+                return ColumnInfo.CollectionType.LIST;
+
+            default:
+                throw new IllegalStateException("Encountered unkown Result type: " + resultType);
+        }
     }
 
     private void analyzeAnnotations(GetterSetterPair pair, ExecutableElement method) {
@@ -230,7 +250,7 @@ public class EntityAnalyzer {
         final String columnName;
         if (columnAnnotation != null) {
             columnName = columnAnnotation.value();
-        } else if(idAnnotation != null) {
+        } else if (idAnnotation != null) {
             columnName = DEFAULT_ID_COLUMN_NAME;
         } else {
             final ExecutableElement method = getter != null ? getter : setter;
@@ -252,7 +272,7 @@ public class EntityAnalyzer {
                 ? analyze((TypeElement) mProcessingEnvironment.getTypeUtils().asElement(pair.getTypeMirror()), adapterManager)
                 : null;
 
-        return new ColumnInfoImpl(pair.getColumnType(), pair.getTypeMirror(), constraints, columnName, pair.getTypeAdapters(), childEntityInfo, pair.getIdentifier(), getter, setter);
+        return new ColumnInfoImpl(pair.getColumnType(), pair.getTypeMirror(), constraints, columnName, pair.getTypeAdapters(), childEntityInfo, pair.getCollectionType(), pair.getIdentifier(), getter, setter);
     }
 
     private static boolean equals(Object a, Object b) {

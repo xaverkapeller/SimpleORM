@@ -64,8 +64,8 @@ public class SQLiteProviderBuilder {
     public Implementation build(final DatabaseInfo databaseInfo) {
         final Implementation.Builder builder = new Implementation.Builder();
         final Type providerType = databaseInfo.isEncrypted()
-                ? SimpleOrmTypes.BASE_ENCRYPTED_SQLITE_PROVIDER.asType()
-                : SimpleOrmTypes.BASE_PLAIN_SQLITE_PROVIDER.asType();
+                ? SimpleOrmTypes.BASE_ENCRYPTED_SQLITE_PROVIDER
+                : SimpleOrmTypes.BASE_PLAIN_SQLITE_PROVIDER;
         builder.setExtendedType(providerType);
         builder.setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL));
 
@@ -118,7 +118,7 @@ public class SQLiteProviderBuilder {
                     @Override
                     protected List<Variable> createParameters() {
                         final List<Variable> parameters = new ArrayList<>();
-                        parameters.add(mParamManager = Variables.of(SimpleOrmTypes.SQLITE_DATABASE_MANAGER.asType()));
+                        parameters.add(mParamManager = Variables.of(SimpleOrmTypes.SQLITE_DATABASE_MANAGER));
                         return parameters;
                     }
 
@@ -153,7 +153,7 @@ public class SQLiteProviderBuilder {
                     @Override
                     protected List<Variable> createParameters() {
                         final List<Variable> parameters = new ArrayList<>();
-                        parameters.add(mParamManager = Variables.of(SimpleOrmTypes.SQLITE_DATABASE_MANAGER.asType()));
+                        parameters.add(mParamManager = Variables.of(SimpleOrmTypes.SQLITE_DATABASE_MANAGER));
                         parameters.add(mOldVersion = Variables.of(Types.Primitives.INTEGER));
                         parameters.add(mNewVersion = Variables.of(Types.Primitives.INTEGER));
                         return parameters;
@@ -178,7 +178,7 @@ public class SQLiteProviderBuilder {
         boolean appendSeparator = false;
         for (ColumnInfo column : entityInfo.getColumns()) {
             if (column.getColumnType() == ColumnType.ENTITY) {
-                createQueries.add(getCreateMappingTableStatement(entityInfo, column));
+                createQueries.add(MappingTables.createMappingTableStatement(entityInfo, column));
                 continue;
             }
 
@@ -193,14 +193,6 @@ public class SQLiteProviderBuilder {
         builder.append(");");
         createQueries.add(builder.toString());
         return createQueries;
-    }
-
-    private String getCreateMappingTableStatement(EntityInfo entity, ColumnInfo column) {
-        return "CREATE TABLE " + MappingTables.getTableName(entity, column) + " (" +
-                "_id INTEGER PRIMARY KEY, " +
-                "ParentId INTEGER, " +
-                "ChildId INTEGER" +
-                ");";
     }
 
     private void appendColumn(StringBuilder builder, ColumnInfo column) {

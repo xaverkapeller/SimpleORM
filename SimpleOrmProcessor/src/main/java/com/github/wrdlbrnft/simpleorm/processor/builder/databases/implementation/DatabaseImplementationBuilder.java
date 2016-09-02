@@ -82,8 +82,8 @@ public class DatabaseImplementationBuilder {
 
         final Field providerField = new Field.Builder()
                 .setType(databaseInfo.isEncrypted()
-                        ? SimpleOrmTypes.ENCRYPTED_SQLITE_PROVIDER.asType()
-                        : SimpleOrmTypes.SQLITE_PROVIDER.asType())
+                        ? SimpleOrmTypes.ENCRYPTED_SQLITE_PROVIDER
+                        : SimpleOrmTypes.SQLITE_PROVIDER)
                 .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.FINAL))
                 .build();
         builder.addField(providerField);
@@ -142,11 +142,12 @@ public class DatabaseImplementationBuilder {
 
                 final EntityInfo childEntityInfo = columnInfo.getChildEntityInfo();
                 final EntityImplementationInfo childImplementationInfo = mImplementationBuilder.build(childEntityInfo);
+                mEntityTypeMap.put(childEntityInfo, childImplementationInfo);
                 builder.addNestedImplementation(childImplementationInfo.getImplementation());
             }
 
             final Field field = new Field.Builder()
-                    .setType(Types.generic(SimpleOrmTypes.REPOSITORY.asType(), entityType))
+                    .setType(Types.generic(SimpleOrmTypes.REPOSITORY, entityType))
                     .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.FINAL))
                     .build();
 
@@ -207,7 +208,7 @@ public class DatabaseImplementationBuilder {
                             final Field field = repositoryMap.get(repositoryInfo);
                             final Implementation managerImplementation = managerMap.get(repositoryInfo);
 
-                            final Type repositoryType = Types.generic(SimpleOrmTypes.BASE_REPOSITORY.asType(), entityType);
+                            final Type repositoryType = Types.generic(SimpleOrmTypes.BASE_REPOSITORY, entityType);
                             final CodeElement managerInstance = managerImplementation.newInstance(providerField);
                             final CodeElement repositoryInstance = repositoryType.newInstance(managerInstance);
                             block.newLine().set(field, repositoryInstance).append(";");

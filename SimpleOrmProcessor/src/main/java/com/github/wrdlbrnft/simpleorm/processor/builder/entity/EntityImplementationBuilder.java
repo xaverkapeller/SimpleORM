@@ -60,7 +60,7 @@ public class EntityImplementationBuilder {
                     protected List<Variable> createParameters() {
                         final List<Variable> parameters = new ArrayList<>();
                         for (ColumnInfo columnInfo : constructorParameters) {
-                            final Variable parameter = Variables.of(Types.of(columnInfo.getTypeMirror()));
+                            final Variable parameter = Variables.of(columnInfo.getObjectType());
                             parameters.add(parameter);
                             mParameterMap.put(columnInfo, parameter);
                         }
@@ -74,7 +74,7 @@ public class EntityImplementationBuilder {
                             final Variable parameter = mParameterMap.get(columnInfo);
                             final Field field = fieldMap.get(columnInfo);
 
-                            if(insertNewLine) {
+                            if (insertNewLine) {
                                 block.newLine();
                             } else {
                                 insertNewLine = true;
@@ -92,7 +92,7 @@ public class EntityImplementationBuilder {
     private Field implementMethod(Implementation.Builder builder, ColumnInfo info) {
         final Field field = new Field.Builder()
                 .setModifiers(EnumSet.of(Modifier.PRIVATE))
-                .setType(Types.of(info.getTypeMirror()))
+                .setType(info.getObjectType())
                 .build();
         builder.addField(field);
 

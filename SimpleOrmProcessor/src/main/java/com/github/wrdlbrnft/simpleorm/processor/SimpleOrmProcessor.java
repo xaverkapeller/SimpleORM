@@ -60,7 +60,7 @@ public class SimpleOrmProcessor extends AbstractProcessor {
             final List<TypeElement> databases = getDatabases(roundEnv);
             final List<DatabaseInfo> databaseInfos = mDatabaseAnalyzer.analyze(databases, adapterManager);
             final Set<EntityInfo> entityInfos = getAllEntityInfos(databaseInfos);
-            final List<FieldInfo> fieldInfos = mFieldConstantsClassBuilder.build(entityInfos);
+            mFieldConstantsClassBuilder.build(entityInfos);
             for (DatabaseInfo databaseInfo : databaseInfos) {
                 final String packageName = Utils.getPackageName(databaseInfo.getTypeElement());
                 final SourceFile databaseSourceFile = SourceFile.create(processingEnv, packageName);

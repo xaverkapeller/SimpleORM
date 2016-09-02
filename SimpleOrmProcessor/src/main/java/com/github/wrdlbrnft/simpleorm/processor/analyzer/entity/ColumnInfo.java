@@ -1,5 +1,6 @@
 package com.github.wrdlbrnft.simpleorm.processor.analyzer.entity;
 
+import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterInfo;
 
 import java.util.List;
@@ -16,11 +17,18 @@ import javax.lang.model.type.TypeMirror;
  */
 
 public interface ColumnInfo {
+    enum CollectionType {
+        NONE,
+        LIST
+    }
+
     ColumnType getColumnType();
     TypeMirror getTypeMirror();
+    Type getObjectType();
     Set<Constraint> getConstraints();
     List<TypeAdapterInfo> getTypeAdapters();
     EntityInfo getChildEntityInfo();
+    CollectionType getCollectionType();
     String getColumnName();
     String getIdentifier();
     ExecutableElement getGetterElement();

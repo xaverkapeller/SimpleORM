@@ -23,6 +23,7 @@ class GetterSetterPair {
 
     private ColumnType mColumnType;
     private TypeMirror mTypeMirror;
+    private ColumnInfo.CollectionType mCollectionType;
     private Id mIdAnnotation;
     private AutoIncrement mAutoIncrementAnnotation;
     private Unique mUniqueAnnotation;
@@ -109,5 +110,13 @@ class GetterSetterPair {
 
     public List<TypeAdapterInfo> getTypeAdapters() {
         return mTypeAdapters;
+    }
+
+    public ColumnInfo.CollectionType getCollectionType() {
+        return mCollectionType;
+    }
+
+    public void setCollectionType(ColumnInfo.CollectionType collectionType) {
+        mCollectionType = collectionType;
     }
 }

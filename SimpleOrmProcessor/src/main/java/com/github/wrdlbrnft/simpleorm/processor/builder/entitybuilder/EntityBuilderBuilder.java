@@ -56,7 +56,7 @@ public class EntityBuilderBuilder {
         final CodeElement[] parameters = new CodeElement[constructorParameters.size()];
         for (int i = 0, size = constructorParameters.size(); i < size; i++) {
             final ColumnInfo columnInfo = constructorParameters.get(i);
-            final Type type = Types.of(columnInfo.getTypeMirror());
+            final Type type = columnInfo.getObjectType();
 
             final Field field = new Field.Builder()
                     .setModifiers(EnumSet.of(Modifier.PRIVATE))
