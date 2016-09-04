@@ -18,8 +18,8 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnType;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterInfo;
 import com.github.wrdlbrnft.simpleorm.processor.builder.databases.implementation.DatabaseImplementationBuilder;
-import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipInfo;
 import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipAnalyzer;
+import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipInfo;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -99,11 +99,8 @@ public class EntityManagerBuilder {
                 })
                 .build());
 
-
-        final Set<TypeAdapterInfo> infos = getAllTypeAdapters(info);
-
         final Map<TypeAdapterInfo, Field> adapterFieldMap = new HashMap<>();
-        for (TypeAdapterInfo typeAdapterInfo : infos) {
+        for (TypeAdapterInfo typeAdapterInfo : getAllTypeAdapters(info)) {
             final Type type = Types.of(typeAdapterInfo.getAdapterElement());
             final Field field = new Field.Builder()
                     .setType(type)
@@ -115,8 +112,7 @@ public class EntityManagerBuilder {
         }
 
         final List<RelationshipInfo> relationshipInfos = mRelationshipAnalyzer.analyze(info);
-
-        final EntityIteratorInfo iteratorInfo = mIteratorBuilder.build(info, cache, adapterFieldMap);
+        final EntityIteratorInfo iteratorInfo = mIteratorBuilder.build(info, relationshipInfos, cache, adapterFieldMap);
         builder.addNestedImplementation(iteratorInfo.getImplementation());
 
         builder.addMethod(new Method.Builder()
@@ -138,21 +134,47 @@ public class EntityManagerBuilder {
                 .setModifiers(EnumSet.of(Modifier.PROTECTED))
                 .addAnnotation(Annotations.forType(Override.class))
                 .setReturnType(Types.generic(SimpleOrmTypes.ENTITY_ITERATOR, entityType))
-                .setCode(new PerformQueryExecutableBuilder(info, relationshipInfos, iteratorInfo))
+                .setCode(new ExecutableBuilder() {
+
+                    private Variable mReadableSQLiteWrapper;
+                    private Variable mQueryParameters;
+
+                    @Override
+                    protected List<Variable> createParameters() {
+                        final List<Variable> parameters = new ArrayList<>();
+                        parameters.add(mReadableSQLiteWrapper = Variables.of(SimpleOrmTypes.READABLE_SQLITE_WRAPPER));
+                        parameters.add(mQueryParameters = Variables.of(SimpleOrmTypes.QUERY_PARAMETERS));
+                        return parameters;
+                    }
+
+                    @Override
+                    protected void write(Block block) {
+                        final Type type = iteratorInfo.getImplementation();
+                        block.append("return ").append(type.newInstance(mReadableSQLiteWrapper, mQueryParameters)).append(";");
+                    }
+                })
                 .build());
 
         return builder.build();
     }
 
-    private Set<TypeAdapterInfo> getAllTypeAdapters(EntityInfo info) {
+    private Set<TypeAdapterInfo> getAllTypeAdapters(EntityInfo entityInfo) {
         final Set<TypeAdapterInfo> infos = new HashSet<>();
-        for (ColumnInfo columnInfo : info.getColumns()) {
-            if (columnInfo.getColumnType() == ColumnType.ENTITY) {
-                infos.addAll(getAllTypeAdapters(columnInfo.getChildEntityInfo()));
+        iterateAllTypeAdapters(entityInfo, infos, new HashSet<ColumnInfo>());
+        return infos;
+    }
+
+    private void iterateAllTypeAdapters(EntityInfo entityInfo, Set<TypeAdapterInfo> adapterInfos, Set<ColumnInfo> handledColumns) {
+        for (ColumnInfo columnInfo : entityInfo.getColumns()) {
+            if (!handledColumns.add(columnInfo)) {
                 continue;
             }
-            infos.addAll(columnInfo.getTypeAdapters());
+
+            adapterInfos.addAll(columnInfo.getTypeAdapters());
+
+            if (columnInfo.getColumnType() == ColumnType.ENTITY) {
+                iterateAllTypeAdapters(columnInfo.getChildEntityInfo(), adapterInfos, handledColumns);
+            }
         }
-        return infos;
     }
 }

@@ -91,7 +91,7 @@ class PerformRemoveExecutableBuilder extends ExecutableBuilder {
                                 Values.of(mEntityInfo.getTableName()),
                                 resolvedSelection,
                                 resolvedSelectionArgs
-                        )).append(";").newLine();
+                        )).append(";");
                     }
                 })
                 .build());

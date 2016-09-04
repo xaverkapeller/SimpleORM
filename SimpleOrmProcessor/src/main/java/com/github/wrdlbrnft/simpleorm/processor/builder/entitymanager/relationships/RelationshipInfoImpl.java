@@ -15,13 +15,12 @@ class RelationshipInfoImpl implements RelationshipInfo {
     private final EntityInfo mParentEntityInfo;
     private final ColumnInfo mColumnInfo;
     private final EntityInfo mChildEntityInfo;
-    private final List<RelationshipInfo> mRelationshipInfos;
+    private List<RelationshipInfo> mRelationshipInfos;
 
-    RelationshipInfoImpl(EntityInfo parentEntityInfo, ColumnInfo columnInfo, EntityInfo childEntityInfo, List<RelationshipInfo> relationshipInfos) {
+    RelationshipInfoImpl(EntityInfo parentEntityInfo, ColumnInfo columnInfo, EntityInfo childEntityInfo) {
         mParentEntityInfo = parentEntityInfo;
         mChildEntityInfo = childEntityInfo;
         mColumnInfo = columnInfo;
-        mRelationshipInfos = relationshipInfos;
     }
 
     public EntityInfo getParentEntityInfo() {
@@ -39,5 +38,32 @@ class RelationshipInfoImpl implements RelationshipInfo {
 
     public List<RelationshipInfo> getChildRelationshipInfos() {
         return mRelationshipInfos;
+    }
+
+    public void setRelationshipInfos(List<RelationshipInfo> relationshipInfos) {
+        mRelationshipInfos = relationshipInfos;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        RelationshipInfoImpl that = (RelationshipInfoImpl) o;
+
+        if (mParentEntityInfo != null ? !mParentEntityInfo.equals(that.mParentEntityInfo) : that.mParentEntityInfo != null)
+            return false;
+        if (mColumnInfo != null ? !mColumnInfo.equals(that.mColumnInfo) : that.mColumnInfo != null)
+            return false;
+        return mChildEntityInfo != null ? mChildEntityInfo.equals(that.mChildEntityInfo) : that.mChildEntityInfo == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = mParentEntityInfo != null ? mParentEntityInfo.hashCode() : 0;
+        result = 31 * result + (mColumnInfo != null ? mColumnInfo.hashCode() : 0);
+        result = 31 * result + (mChildEntityInfo != null ? mChildEntityInfo.hashCode() : 0);
+        return result;
     }
 }
