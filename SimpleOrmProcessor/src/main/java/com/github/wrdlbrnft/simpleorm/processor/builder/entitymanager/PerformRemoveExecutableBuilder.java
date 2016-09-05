@@ -208,6 +208,7 @@ class PerformRemoveExecutableBuilder extends ExecutableBuilder {
         final StringBuilder removeEntityQueryBuilder = new StringBuilder();
         final StringBuilder removeMappingQueryBuilder = new StringBuilder();
 
+        RelationshipInfo previousInfo = null;
         final int startIndex = relationInfos.size() - 1;
         for (int i = startIndex; i >= 0; i--) {
             final RelationshipInfo relationInfo = relationInfos.get(i);
@@ -231,7 +232,12 @@ class PerformRemoveExecutableBuilder extends ExecutableBuilder {
             removeEntityQueryBuilder.append(" JOIN ").append(mappingTableName).append(" ON ").append(childTableName).append(".").append(childIdColumn).append("=").append(mappingTableName).append(".").append(MappingTables.COLUMN_CHILD_ID)
                     .append(" JOIN ").append(parentTableName).append(" ON ").append(mappingTableName).append(".").append(MappingTables.COLUMN_PARENT_ID).append("=").append(parentTableName).append(".").append(parentIdColumn);
 
+            if(previousInfo != null) {
+                removeMappingQueryBuilder.append(" JOIN ").append(mappingTableName).append(" ON ").append(childTableName).append(".").append(childIdColumn).append("=").append(mappingTableName).append(".").append(MappingTables.COLUMN_CHILD_ID);
+            }
             removeMappingQueryBuilder.append(" JOIN ").append(parentTableName).append(" ON ").append(mappingTableName).append(".").append(MappingTables.COLUMN_PARENT_ID).append("=").append(parentTableName + ".").append(parentIdColumn);
+
+            previousInfo = relationInfo;
         }
 
         removeEntityQueryBuilder.append(" WHERE ");
