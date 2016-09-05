@@ -16,6 +16,8 @@ public class SimpleOrmTypes {
     public static final DefinedType SELECTION_BUILDER = Types.of("com.github.wrdlbrnft.simpleorm.selection", "Selection.Builder");
 
     public static final DefinedType STRING_BUILDER = Types.of(StringBuilder.class);
+    public static final DefinedType COLLECTIONS = Types.of("java.util", "Collections");
+    public static final DefinedType LONG_SPARSE_ARRAY_COMPAT = Types.of("com.github.wrdlbrnft.simpleorm.utils", "LongSparseArrayCompat");
 
     public static final DefinedType SQLITE_PROVIDER = Types.of("com.github.wrdlbrnft.simpleorm.database", "SQLiteProvider");
     public static final DefinedType ENCRYPTED_SQLITE_PROVIDER = Types.of("com.github.wrdlbrnft.simpleorm.database", "EncryptedSQLiteProvider");

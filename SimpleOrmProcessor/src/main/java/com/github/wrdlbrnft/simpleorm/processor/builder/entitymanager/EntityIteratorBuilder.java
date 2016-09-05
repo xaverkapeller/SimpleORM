@@ -5,13 +5,17 @@ import com.github.wrdlbrnft.codebuilder.arrays.ArrayUtils;
 import com.github.wrdlbrnft.codebuilder.code.Block;
 import com.github.wrdlbrnft.codebuilder.code.BlockWriter;
 import com.github.wrdlbrnft.codebuilder.code.CodeElement;
+import com.github.wrdlbrnft.codebuilder.elements.forloop.counting.CountingFor;
 import com.github.wrdlbrnft.codebuilder.elements.ifs.If;
+import com.github.wrdlbrnft.codebuilder.elements.ifs.TernaryIf;
 import com.github.wrdlbrnft.codebuilder.elements.values.Values;
 import com.github.wrdlbrnft.codebuilder.executables.Constructor;
 import com.github.wrdlbrnft.codebuilder.executables.ExecutableBuilder;
 import com.github.wrdlbrnft.codebuilder.executables.Method;
 import com.github.wrdlbrnft.codebuilder.executables.Methods;
 import com.github.wrdlbrnft.codebuilder.implementations.Implementation;
+import com.github.wrdlbrnft.codebuilder.types.DefinedType;
+import com.github.wrdlbrnft.codebuilder.types.GenericType;
 import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.codebuilder.types.Types;
 import com.github.wrdlbrnft.codebuilder.util.MapBuilder;
@@ -46,7 +50,9 @@ import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.Ent
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_GET_ORDER_BY;
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_GET_SELECTION;
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_GET_SELECTION_ARGS;
+import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_IS_EMPTY;
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_MOVE_TO_POSITION;
+import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_PUT;
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_QUERY;
 
 /**
@@ -58,6 +64,9 @@ import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.Ent
 class EntityIteratorBuilder {
 
     private static final Method METHOD_APPEND = Methods.stub("append");
+    private static final Method METHOD_ADD = Methods.stub("add");
+    private static final Method METHOD_GET = Methods.stub("get");
+    private static final Method METHOD_TRIM = Methods.stub("trim");
 
     private static final Map<ColumnType, Type> COLUMN_TYPE_MAP = new MapBuilder<ColumnType, Type>()
             .put(ColumnType.PRIMITIVE_INT, Types.Primitives.INTEGER)
@@ -128,20 +137,32 @@ class EntityIteratorBuilder {
         builder.addField(cacheField);
 
         final Map<RelationshipInfo, Field> wrapperMap = new HashMap<>();
-        final Map<IndexIdentifier, Field> indexFieldMap = new HashMap<>();
+        final Map<Identifier, Field> indexFieldMap = new HashMap<>();
+        final Map<Identifier, MethodWrapper> childMethodWrapperMap = new HashMap<>();
+        final Map<RelationshipInfo, Field> mappingIdIndexFieldMap = new HashMap<>();
         RelationshipTree.iterate(relationshipInfos, new RelationshipTree.Iterator() {
             @Override
             public void onPathFound(List<RelationshipInfo> path) {
                 final int startIndex = path.size() - 1;
-                final RelationshipInfo key = path.get(startIndex);
+                final RelationshipInfo relationshipInfo = path.get(startIndex);
+                final EntityInfo childEntityInfo = relationshipInfo.getChildEntityInfo();
+                final DefinedType childEntityType = Types.of(childEntityInfo.getEntityElement());
+
                 final Field wrapperField = new Field.Builder()
                         .setType(SimpleOrmTypes.CURSOR_WRAPPER)
                         .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.FINAL))
                         .build();
                 builder.addField(wrapperField);
-                wrapperMap.put(key, wrapperField);
+                wrapperMap.put(relationshipInfo, wrapperField);
 
-                for (ColumnInfo columnInfo : key.getChildEntityInfo().getColumns()) {
+                final Field mappingIdIndexField = new Field.Builder()
+                        .setType(Types.Primitives.INTEGER)
+                        .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.FINAL))
+                        .build();
+                builder.addField(mappingIdIndexField);
+                mappingIdIndexFieldMap.put(relationshipInfo, mappingIdIndexField);
+
+                for (ColumnInfo columnInfo : childEntityInfo.getColumns()) {
                     if (columnInfo.getColumnType() == ColumnType.ENTITY) {
                         continue;
                     }
@@ -150,8 +171,78 @@ class EntityIteratorBuilder {
                             .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.FINAL))
                             .build();
                     builder.addField(field);
-                    indexFieldMap.put(new IndexIdentifierImpl(key, columnInfo), field);
+                    indexFieldMap.put(new RelationshipColumnIdentifier(relationshipInfo, columnInfo), field);
                 }
+
+                final GenericType cacheType = Types.generic(SimpleOrmTypes.LONG_SPARSE_ARRAY_COMPAT, Types.generic(Types.LIST, childEntityType));
+                final Field cacheField = new Field.Builder()
+                        .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.FINAL))
+                        .setType(cacheType)
+                        .setInitialValue(cacheType.newInstance())
+                        .build();
+                builder.addField(cacheField);
+
+                final Field childrenLoadedFlag = new Field.Builder()
+                        .setType(Types.Primitives.BOOLEAN)
+                        .setModifiers(EnumSet.of(Modifier.PRIVATE))
+                        .setInitialValue(Values.of(false))
+                        .build();
+                builder.addField(childrenLoadedFlag);
+
+                final Method childMethod = new Method.Builder()
+                        .setReturnType(Types.generic(Types.LIST, childEntityType))
+                        .setModifiers(EnumSet.of(Modifier.PRIVATE))
+                        .setCode(new ExecutableBuilder() {
+
+                            private Variable mParentId;
+
+                            @Override
+                            protected List<Variable> createParameters() {
+                                final List<Variable> parameters = new ArrayList<>();
+                                parameters.add(mParentId = Variables.of(Types.Primitives.LONG));
+                                return parameters;
+                            }
+
+                            @Override
+                            protected void write(Block block) {
+                                block.append(new If.Builder().add(Values.invert(childrenLoadedFlag), new BlockWriter() {
+                                    @Override
+                                    protected void write(Block block) {
+                                        block.set(childrenLoadedFlag, Values.of(true)).append(";").newLine();
+
+                                        block.append(new CountingFor.Builder()
+                                                .setCounterType(Types.Primitives.INTEGER)
+                                                .setValues(Values.of(0), METHOD_GET_COUNT.callOnTarget(wrapperField))
+                                                .setMode(CountingFor.Mode.INCREMENTING)
+                                                .setIteration(new CountingFor.Iteration() {
+                                                    @Override
+                                                    public void onIteration(Block block, Variable index, CodeElement endValue) {
+                                                        final CodeElement instance = appendReadInstance(block, index, relationshipInfo, wrapperField, cache, childEntityInfo, indexFieldMap, childMethodWrapperMap, adapterFieldMap);
+                                                        final Variable mappingId = Variables.of(Types.Primitives.LONG, Modifier.FINAL);
+                                                        block.set(mappingId, COLUMN_METHOD_MAP.get(ColumnType.PRIMITIVE_LONG).callOnTarget(wrapperField, mappingIdIndexField)).append(";").newLine();
+
+                                                        final Variable list = Variables.of(Types.generic(Types.LIST, childEntityType));
+                                                        block.set(list, METHOD_GET.callOnTarget(cacheField, mappingId, Types.generic(Types.ARRAY_LIST, childEntityType).newInstance())).append(";").newLine();
+                                                        block.append(METHOD_ADD.callOnTarget(list, instance)).append(";").newLine();
+                                                        block.append(METHOD_PUT.callOnTarget(cacheField, mappingId, list)).append(";");
+                                                    }
+
+                                                    @Override
+                                                    public void onCompare(Block block, Variable index, CodeElement endValue) {
+                                                        block.append(Operators.operate(index, "<", endValue));
+                                                    }
+                                                })
+                                                .build());
+                                    }
+                                })
+                                        .build());
+                                block.newLine();
+                                block.append("return ").append(METHOD_GET.callOnTarget(cacheField, mParentId, Types.generic(Types.ARRAY_LIST, childEntityType).newInstance())).append(";");
+                            }
+                        })
+                        .build();
+                builder.addMethod(childMethod);
+                getMethodWrapper(childMethodWrapperMap, childEntityInfo, relationshipInfo.getColumnInfo()).setMethod(childMethod);
             }
         });
 
@@ -164,8 +255,34 @@ class EntityIteratorBuilder {
                     .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.FINAL))
                     .build();
             builder.addField(field);
-            indexFieldMap.put(new IndexIdentifierImpl(null, columnInfo), field);
+            indexFieldMap.put(new RelationshipColumnIdentifier(null, columnInfo), field);
         }
+
+        final Method notNullOrEmpty = new Method.Builder()
+                .setReturnType(Types.Primitives.BOOLEAN)
+                .setModifiers(EnumSet.of(Modifier.PRIVATE))
+                .setCode(new ExecutableBuilder() {
+
+                    private Variable mString;
+
+                    @Override
+                    protected List<Variable> createParameters() {
+                        final List<Variable> parameters = new ArrayList<>();
+                        parameters.add(mString = Variables.of(Types.STRING));
+                        return parameters;
+                    }
+
+                    @Override
+                    protected void write(Block block) {
+                        block.append("return ")
+                                .append(Operators.operate(mString, "!=", Values.ofNull()))
+                                .append(" && ")
+                                .append(Values.invert(METHOD_IS_EMPTY.callOnTarget(METHOD_TRIM.callOnTarget(mString))))
+                                .append(";");
+                    }
+                })
+                .build();
+        builder.addMethod(notNullOrEmpty);
 
         final Method performQuery = new Method.Builder()
                 .setReturnType(Types.STRING)
@@ -193,7 +310,7 @@ class EntityIteratorBuilder {
                         block.set(stringBuilder, SimpleOrmTypes.STRING_BUILDER.newInstance(mQuery)).append(";").newLine();
 
                         block.append(new If.Builder()
-                                .add(Operators.operate(mOrderByString, "!=", Values.ofNull()), new BlockWriter() {
+                                .add(notNullOrEmpty.call(mOrderByString), new BlockWriter() {
                                     @Override
                                     protected void write(Block block) {
                                         block.append(METHOD_APPEND.callOnTarget(METHOD_APPEND.callOnTarget(stringBuilder, Values.of(" ORDER BY ")), mOrderByString)).append(";");
@@ -203,7 +320,7 @@ class EntityIteratorBuilder {
                         block.newLine();
 
                         block.append(new If.Builder()
-                                .add(Operators.operate(mLimitString, "!=", Values.ofNull()), new BlockWriter() {
+                                .add(notNullOrEmpty.call(mLimitString), new BlockWriter() {
                                     @Override
                                     protected void write(Block block) {
                                         block.append(METHOD_APPEND.callOnTarget(METHOD_APPEND.callOnTarget(stringBuilder, Values.of(" LIMIT ")), mLimitString)).append(";");
@@ -213,7 +330,7 @@ class EntityIteratorBuilder {
                         block.newLine();
 
                         block.append(new If.Builder()
-                                .add(Operators.operate(mSelectionString, "!=", Values.ofNull()), new BlockWriter() {
+                                .add(notNullOrEmpty.call(mSelectionString), new BlockWriter() {
                                     @Override
                                     protected void write(Block block) {
                                         block.append(METHOD_APPEND.callOnTarget(METHOD_APPEND.callOnTarget(stringBuilder, Values.of(" WHERE ")), mSelectionString)).append(";");
@@ -282,7 +399,7 @@ class EntityIteratorBuilder {
                             if (columnInfo.getColumnType() == ColumnType.ENTITY) {
                                 continue;
                             }
-                            final Field field = indexFieldMap.get(new IndexIdentifierImpl(null, columnInfo));
+                            final Field field = indexFieldMap.get(new RelationshipColumnIdentifier(null, columnInfo));
                             block.newLine().set(field, METHOD_GET_COLUMN_INDEX.callOnTarget(wrapperField, Values.of(columnInfo.getColumnName()))).append(";");
                         }
 
@@ -300,42 +417,11 @@ class EntityIteratorBuilder {
                                     if (columnInfo.getColumnType() == ColumnType.ENTITY) {
                                         continue;
                                     }
-                                    final Field field = indexFieldMap.get(new IndexIdentifierImpl(key, columnInfo));
+                                    final Field field = indexFieldMap.get(new RelationshipColumnIdentifier(key, columnInfo));
                                     block.newLine().set(field, METHOD_GET_COLUMN_INDEX.callOnTarget(wrapperField, Values.of(columnInfo.getColumnName()))).append(";");
                                 }
-                            }
-
-                            private String createSelectionQuery(List<RelationshipInfo> path) {
-                                final int startIndex = path.size() - 1;
-                                final StringBuilder queryBuilder = new StringBuilder();
-                                for (int i = startIndex; i >= 0; i--) {
-                                    final RelationshipInfo relationshipInfo = path.get(i);
-                                    final EntityInfo parentEntityInfo = relationshipInfo.getParentEntityInfo();
-                                    final String parentTableName = parentEntityInfo.getTableName();
-                                    final String parentIdColumn = parentEntityInfo.getIdColumn().getColumnName();
-                                    final ColumnInfo relationshipColumnInfo = relationshipInfo.getColumnInfo();
-                                    final EntityInfo childEntityInfo = relationshipInfo.getChildEntityInfo();
-                                    final String childTableName = childEntityInfo.getTableName();
-                                    final String childIdColumn = childEntityInfo.getIdColumn().getColumnName();
-                                    final String mappingTableName = MappingTables.getTableName(parentEntityInfo, relationshipColumnInfo);
-
-                                    if (i == startIndex) {
-                                        queryBuilder.append("SELECT ");
-                                        for (ColumnInfo columnInfo : childEntityInfo.getColumns()) {
-                                            if (columnInfo.getColumnType() == ColumnType.ENTITY) {
-                                                continue;
-                                            }
-                                            final String columnName = columnInfo.getColumnName();
-                                            queryBuilder.append(childTableName).append(".").append(columnName).append(" AS ").append(columnName).append(", ");
-                                        }
-                                        queryBuilder.append(mappingTableName).append(".").append(MappingTables.COLUMN_PARENT_ID).append(" AS ").append(MappingTables.COLUMN_PARENT_ID);
-                                        queryBuilder.append(" FROM ").append(childTableName);
-                                    }
-
-                                    queryBuilder.append(" JOIN ").append(mappingTableName).append(" ON ").append(childTableName).append(".").append(childIdColumn).append("=").append(mappingTableName).append(".").append(MappingTables.COLUMN_CHILD_ID)
-                                            .append(" JOIN ").append(parentTableName).append(" ON ").append(mappingTableName).append(".").append(MappingTables.COLUMN_PARENT_ID).append("=").append(parentTableName).append(".").append(parentIdColumn);
-                                }
-                                return queryBuilder.toString();
+                                final Field mappingIdIndexField = mappingIdIndexFieldMap.get(key);
+                                block.newLine().set(mappingIdIndexField, METHOD_GET_COLUMN_INDEX.callOnTarget(wrapperField, Values.of(MappingTables.COLUMN_PARENT_ID))).append(";");
                             }
                         });
 
@@ -345,7 +431,27 @@ class EntityIteratorBuilder {
                 })
                 .build());
 
-        final Method readFromPosition = createReadFromPositionMethod(info, cache, adapterFieldMap, entityType, wrapperField, indexFieldMap);
+        final Method readFromPosition = new Method.Builder()
+                .setModifiers(EnumSet.of(Modifier.PRIVATE))
+                .setReturnType(entityType)
+                .setCode(new ExecutableBuilder() {
+
+                    private Variable mPosition;
+
+                    @Override
+                    protected List<Variable> createParameters() {
+                        final ArrayList<Variable> parameters = new ArrayList<>();
+                        parameters.add(mPosition = Variables.of(Types.Primitives.INTEGER));
+                        return parameters;
+                    }
+
+                    @Override
+                    protected void write(Block block) {
+                        final CodeElement instance = appendReadInstance(block, mPosition, null, wrapperField, cache, info, indexFieldMap, childMethodWrapperMap, adapterFieldMap);
+                        block.append("return ").append(instance).append(";");
+                    }
+                })
+                .build();
         builder.addMethod(readFromPosition);
 
         final Method read = new Method.Builder()
@@ -496,67 +602,137 @@ class EntityIteratorBuilder {
         return new EntityIteratorInfoImpl(implementation);
     }
 
-    private Method createReadFromPositionMethod(final EntityInfo info, final DatabaseImplementationBuilder.EntityImplementationCache cache, final Map<TypeAdapterInfo, Field> adapterFieldMap, Type entityType, final Field wrapperField, final Map<IndexIdentifier, Field> indexFieldMap) {
-        return new Method.Builder()
-                .setModifiers(EnumSet.of(Modifier.PRIVATE))
-                .setReturnType(entityType)
-                .setCode(new ExecutableBuilder() {
+    private CodeElement appendReadInstance(Block block, Variable index, RelationshipInfo relationshipInfo, Field wrapperField, DatabaseImplementationBuilder.EntityImplementationCache cache, EntityInfo info, Map<Identifier, Field> indexFieldMap, Map<Identifier, MethodWrapper> childMethodWrapperMap, Map<TypeAdapterInfo, Field> adapterFieldMap) {
+        block.append(METHOD_MOVE_TO_POSITION.callOnTarget(wrapperField, index)).append(";").newLine();
+        final EntityImplementationInfo implementationInfo = cache.get(info);
+        final List<ColumnInfo> constructorParameters = implementationInfo.getConstructorParameters();
+        final CodeElement[] parameters = new CodeElement[constructorParameters.size()];
+        final List<ChildResolveInfo> resolveInfos = new ArrayList<>();
+        Variable idVariable = null;
+        for (int i = 0, size = constructorParameters.size(); i < size; i++) {
+            final ColumnInfo columnInfo = constructorParameters.get(i);
+            final ColumnType columnType = columnInfo.getColumnType();
+            if (columnType == ColumnType.ENTITY) {
+                resolveInfos.add(new ChildResolveInfo(i, columnInfo.getChildEntityInfo(), columnInfo));
+                continue;
+            }
 
-                    private Variable mPosition;
+            final Field indexField = indexFieldMap.get(new RelationshipColumnIdentifier(relationshipInfo, columnInfo));
+            final Type type = COLUMN_TYPE_MAP.get(columnType);
+            final Variable parameter = Variables.of(type, Modifier.FINAL);
+            final Method method = COLUMN_METHOD_MAP.get(columnType);
+            block.set(parameter, method.callOnTarget(wrapperField, indexField)).append(";").newLine();
+            parameters[i] = applyAdaptersConvertTo(columnInfo.getTypeAdapters(), adapterFieldMap, parameter);
 
-                    @Override
-                    protected List<Variable> createParameters() {
-                        final ArrayList<Variable> parameters = new ArrayList<>();
-                        parameters.add(mPosition = Variables.of(Types.Primitives.INTEGER));
-                        return parameters;
-                    }
-
-                    @Override
-                    protected void write(Block block) {
-                        block.append(METHOD_MOVE_TO_POSITION.callOnTarget(wrapperField, mPosition)).append(";").newLine();
-                        final EntityImplementationInfo implementationInfo = cache.get(info);
-                        final List<ColumnInfo> constructorParameters = implementationInfo.getConstructorParameters();
-                        final CodeElement[] parameters = new CodeElement[constructorParameters.size()];
-                        for (int i = 0, size = constructorParameters.size(); i < size; i++) {
-                            final ColumnInfo columnInfo = constructorParameters.get(i);
-                            final ColumnType columnType = columnInfo.getColumnType();
-                            if (columnType == ColumnType.ENTITY) {
-                                parameters[i] = Values.ofNull();
-                                continue;
-                            }
-                            final Field indexField = indexFieldMap.get(new IndexIdentifierImpl(null, columnInfo));
-                            final Type type = COLUMN_TYPE_MAP.get(columnType);
-                            final Variable parameter = Variables.of(type, Modifier.FINAL);
-                            final Method method = COLUMN_METHOD_MAP.get(columnType);
-                            block.set(parameter, method.callOnTarget(wrapperField, indexField)).append(";").newLine();
-                            parameters[i] = applyAdaptersConvertTo(columnInfo.getTypeAdapters(), parameter);
-                        }
-                        block.append("return ").append(implementationInfo.getImplementation().newInstance(parameters)).append(";");
-                    }
-
-                    private CodeElement applyAdaptersConvertTo(List<TypeAdapterInfo> typeAdapters, CodeElement codeElement) {
-                        if (typeAdapters.isEmpty()) {
-                            return codeElement;
-                        }
-
-                        final TypeAdapterInfo info = typeAdapters.get(0);
-                        final Field field = adapterFieldMap.get(info);
-                        return METHOD_CONVERT_TO.callOnTarget(field, applyAdaptersConvertTo(typeAdapters.subList(1, typeAdapters.size()), codeElement));
-                    }
-                })
-                .build();
+            if (columnInfo == info.getIdColumn()) {
+                idVariable = parameter;
+            }
+        }
+        for (ChildResolveInfo resolveInfo : resolveInfos) {
+            final EntityInfo childInfo = resolveInfo.mChildInfo;
+            final ColumnInfo columnInfo = resolveInfo.mColumnInfo;
+            final MethodWrapper wrapper = getMethodWrapper(childMethodWrapperMap, childInfo, columnInfo);
+            final ColumnInfo.CollectionType collectionType = columnInfo.getCollectionType();
+            final Variable listVariable = Variables.of(Types.generic(Types.LIST, Types.of(childInfo.getEntityElement())), Modifier.FINAL);
+            block.set(listVariable, wrapper.call(idVariable)).append(";").newLine();
+            if (collectionType == ColumnInfo.CollectionType.LIST) {
+                parameters[resolveInfo.mIndex] = listVariable;
+            } else if (collectionType == ColumnInfo.CollectionType.NONE) {
+                parameters[resolveInfo.mIndex] = new TernaryIf.Builder()
+                        .setComparison(METHOD_IS_EMPTY.callOnTarget(listVariable))
+                        .setTrueBlock(Values.ofNull())
+                        .setFalseBlock(METHOD_GET.callOnTarget(listVariable, Values.of(0)))
+                        .build();
+            }
+        }
+        return implementationInfo.getImplementation().newInstance(parameters);
     }
 
-    private interface IndexIdentifier {
+    private MethodWrapper getMethodWrapper(Map<Identifier, MethodWrapper> childMethodWrapperMap, EntityInfo info, ColumnInfo column) {
+        final Identifier key = new EntityInfoColumnIdentifier(info, column);
+        final MethodWrapper wrapper = childMethodWrapperMap.get(key);
+        if (wrapper != null) {
+            return wrapper;
+        }
+        final MethodWrapper newWrapper = new MethodWrapper();
+        childMethodWrapperMap.put(key, newWrapper);
+        return newWrapper;
+    }
+
+    private class ChildResolveInfo {
+
+        private final int mIndex;
+        private final EntityInfo mChildInfo;
+        private final ColumnInfo mColumnInfo;
+
+        private ChildResolveInfo(int index, EntityInfo childInfo, ColumnInfo columnInfo) {
+            mIndex = index;
+            mChildInfo = childInfo;
+            mColumnInfo = columnInfo;
+        }
+
+        public int getIndex() {
+            return mIndex;
+        }
+
+        public EntityInfo getChildInfo() {
+            return mChildInfo;
+        }
+    }
+
+    private String createSelectionQuery(List<RelationshipInfo> path) {
+        final int startIndex = path.size() - 1;
+        final StringBuilder queryBuilder = new StringBuilder();
+        for (int i = startIndex; i >= 0; i--) {
+            final RelationshipInfo relationshipInfo = path.get(i);
+            final EntityInfo parentEntityInfo = relationshipInfo.getParentEntityInfo();
+            final String parentTableName = parentEntityInfo.getTableName();
+            final String parentIdColumn = parentEntityInfo.getIdColumn().getColumnName();
+            final ColumnInfo relationshipColumnInfo = relationshipInfo.getColumnInfo();
+            final EntityInfo childEntityInfo = relationshipInfo.getChildEntityInfo();
+            final String childTableName = childEntityInfo.getTableName();
+            final String childIdColumn = childEntityInfo.getIdColumn().getColumnName();
+            final String mappingTableName = MappingTables.getTableName(parentEntityInfo, relationshipColumnInfo);
+
+            if (i == startIndex) {
+                queryBuilder.append("SELECT ");
+                for (ColumnInfo columnInfo : childEntityInfo.getColumns()) {
+                    if (columnInfo.getColumnType() == ColumnType.ENTITY) {
+                        continue;
+                    }
+                    final String columnName = columnInfo.getColumnName();
+                    queryBuilder.append(childTableName).append(".").append(columnName).append(" AS ").append(columnName).append(", ");
+                }
+                queryBuilder.append(mappingTableName).append(".").append(MappingTables.COLUMN_PARENT_ID).append(" AS ").append(MappingTables.COLUMN_PARENT_ID);
+                queryBuilder.append(" FROM ").append(childTableName);
+            }
+
+            queryBuilder.append(" JOIN ").append(mappingTableName).append(" ON ").append(childTableName).append(".").append(childIdColumn).append("=").append(mappingTableName).append(".").append(MappingTables.COLUMN_CHILD_ID)
+                    .append(" JOIN ").append(parentTableName).append(" ON ").append(mappingTableName).append(".").append(MappingTables.COLUMN_PARENT_ID).append("=").append(parentTableName).append(".").append(parentIdColumn);
+        }
+        return queryBuilder.toString();
+    }
+
+    private CodeElement applyAdaptersConvertTo(List<TypeAdapterInfo> typeAdapters, Map<TypeAdapterInfo, Field> adapterFieldMap, CodeElement codeElement) {
+        if (typeAdapters.isEmpty()) {
+            return codeElement;
+        }
+
+        final TypeAdapterInfo info = typeAdapters.get(0);
+        final Field field = adapterFieldMap.get(info);
+        return METHOD_CONVERT_TO.callOnTarget(field, applyAdaptersConvertTo(typeAdapters.subList(1, typeAdapters.size()), adapterFieldMap, codeElement));
+    }
+
+    private interface Identifier {
 
     }
 
-    private static class IndexIdentifierImpl implements IndexIdentifier {
+    private static class RelationshipColumnIdentifier implements Identifier {
 
         private final RelationshipInfo mRelationshipInfo;
         private final ColumnInfo mColumnInfo;
 
-        private IndexIdentifierImpl(RelationshipInfo relationshipInfo, ColumnInfo columnInfo) {
+        private RelationshipColumnIdentifier(RelationshipInfo relationshipInfo, ColumnInfo columnInfo) {
             mRelationshipInfo = relationshipInfo;
             mColumnInfo = columnInfo;
         }
@@ -566,7 +742,7 @@ class EntityIteratorBuilder {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
 
-            IndexIdentifierImpl that = (IndexIdentifierImpl) o;
+            RelationshipColumnIdentifier that = (RelationshipColumnIdentifier) o;
 
             if (mRelationshipInfo != null ? !mRelationshipInfo.equals(that.mRelationshipInfo) : that.mRelationshipInfo != null)
                 return false;
@@ -576,6 +752,37 @@ class EntityIteratorBuilder {
         @Override
         public int hashCode() {
             int result = mRelationshipInfo != null ? mRelationshipInfo.hashCode() : 0;
+            result = 31 * result + (mColumnInfo != null ? mColumnInfo.hashCode() : 0);
+            return result;
+        }
+    }
+
+    private static class EntityInfoColumnIdentifier implements Identifier {
+
+        private final EntityInfo mEntityInfo;
+        private final ColumnInfo mColumnInfo;
+
+        private EntityInfoColumnIdentifier(EntityInfo entityInfo, ColumnInfo columnInfo) {
+            mEntityInfo = entityInfo;
+            mColumnInfo = columnInfo;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            EntityInfoColumnIdentifier that = (EntityInfoColumnIdentifier) o;
+
+            if (mEntityInfo != null ? !mEntityInfo.equals(that.mEntityInfo) : that.mEntityInfo != null)
+                return false;
+            return mColumnInfo != null ? mColumnInfo.equals(that.mColumnInfo) : that.mColumnInfo == null;
+
+        }
+
+        @Override
+        public int hashCode() {
+            int result = mEntityInfo != null ? mEntityInfo.hashCode() : 0;
             result = 31 * result + (mColumnInfo != null ? mColumnInfo.hashCode() : 0);
             return result;
         }
@@ -592,6 +799,50 @@ class EntityIteratorBuilder {
         @Override
         public Implementation getImplementation() {
             return mImplementation;
+        }
+    }
+
+    private static class MethodWrapper extends BlockWriter implements Method {
+
+        private Method mMethod;
+
+        @Override
+        protected void write(Block block) {
+            block.append(mMethod);
+        }
+
+        @Override
+        public CodeElement callOnTarget(final CodeElement codeElement, final CodeElement... codeElements) {
+            return new BlockWriter() {
+                @Override
+                protected void write(Block block) {
+                    block.append(mMethod.callOnTarget(codeElement, codeElements));
+                }
+            };
+        }
+
+        @Override
+        public CodeElement call(final CodeElement... codeElements) {
+            return new BlockWriter() {
+                @Override
+                protected void write(Block block) {
+                    block.append(mMethod.call(codeElements));
+                }
+            };
+        }
+
+        @Override
+        public CodeElement getDeclaration() {
+            return new BlockWriter() {
+                @Override
+                protected void write(Block block) {
+                    block.append(mMethod.getDeclaration());
+                }
+            };
+        }
+
+        public void setMethod(Method method) {
+            mMethod = method;
         }
     }
 }

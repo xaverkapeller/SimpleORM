@@ -76,7 +76,7 @@ class PerformRemoveExecutableBuilder extends ExecutableBuilder {
         block.set(selection, METHOD_GET_SELECTION.callOnTarget(mRemoveParameters)).append(";").newLine();
 
         block.append(new If.Builder()
-                .add(new Block().append("!").append(METHOD_IS_EMPTY.callOnTarget(selection)), new BlockWriter() {
+                .add(Values.invert(METHOD_IS_EMPTY.callOnTarget(selection)), new BlockWriter() {
                     @Override
                     protected void write(Block block) {
                         final Variable resolvedSelection = Variables.of(Types.STRING, Modifier.FINAL);

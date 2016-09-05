@@ -4,6 +4,6 @@ targetCompatibility = '1.7'
 sourceCompatibility = '1.7'
 
 dependencies {
-    compile 'com.github.wrdlbrnft:code-builder:0.2.0.9'
+    compile 'com.github.wrdlbrnft:code-builder:0.2.0.10'
     compile project(path: ':SimpleOrmApi')
 }
