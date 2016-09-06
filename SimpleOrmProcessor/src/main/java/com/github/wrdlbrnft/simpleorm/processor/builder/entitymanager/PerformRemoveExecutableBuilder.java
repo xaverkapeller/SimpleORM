@@ -20,6 +20,7 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterInfo;
 import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipInfo;
+import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipTree;
 import com.github.wrdlbrnft.simpleorm.processor.utils.MappingTables;
 
 import java.util.ArrayList;
@@ -177,27 +178,15 @@ class PerformRemoveExecutableBuilder extends ExecutableBuilder {
         }
     }
 
-    private List<CodeElement> appendChildRemoval(Variable selection) {
+    private List<CodeElement> appendChildRemoval(final Variable selection) {
         final List<CodeElement> queryList = new ArrayList<>();
 
-        for (RelationshipInfo relationshipInfo : mRelationshipInfos) {
-            queryList.addAll(appendChildRemoval(Collections.singletonList(relationshipInfo), selection));
-        }
-
-        return queryList;
-    }
-
-    private List<CodeElement> appendChildRemoval(List<RelationshipInfo> infoBacklog, Variable selection) {
-        final List<CodeElement> queryList = new ArrayList<>();
-
-        final RelationshipInfo relationshipInfo = infoBacklog.get(infoBacklog.size() - 1);
-        for (RelationshipInfo info : relationshipInfo.getChildRelationshipInfos()) {
-            final List<RelationshipInfo> newBacklog = new ArrayList<>(infoBacklog);
-            newBacklog.add(info);
-            queryList.addAll(appendChildRemoval(newBacklog, selection));
-        }
-
-        queryList.addAll(createRemoveQueries(infoBacklog, selection));
+        RelationshipTree.iterate(mRelationshipInfos, new RelationshipTree.Iterator() {
+            @Override
+            public void onPathFound(List<RelationshipInfo> path) {
+                queryList.addAll(createRemoveQueries(path, selection));
+            }
+        });
 
         return queryList;
     }
@@ -248,5 +237,4 @@ class PerformRemoveExecutableBuilder extends ExecutableBuilder {
 
         return queryList;
     }
-
 }

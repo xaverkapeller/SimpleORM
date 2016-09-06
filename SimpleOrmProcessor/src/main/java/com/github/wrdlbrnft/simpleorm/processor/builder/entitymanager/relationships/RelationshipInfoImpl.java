@@ -12,12 +12,14 @@ import java.util.List;
  */
 class RelationshipInfoImpl implements RelationshipInfo {
 
+    private final long mId;
     private final EntityInfo mParentEntityInfo;
     private final ColumnInfo mColumnInfo;
     private final EntityInfo mChildEntityInfo;
     private List<RelationshipInfo> mRelationshipInfos;
 
-    RelationshipInfoImpl(EntityInfo parentEntityInfo, ColumnInfo columnInfo, EntityInfo childEntityInfo) {
+    RelationshipInfoImpl(long id, EntityInfo parentEntityInfo, ColumnInfo columnInfo, EntityInfo childEntityInfo) {
+        mId = id;
         mParentEntityInfo = parentEntityInfo;
         mChildEntityInfo = childEntityInfo;
         mColumnInfo = columnInfo;
@@ -51,6 +53,7 @@ class RelationshipInfoImpl implements RelationshipInfo {
 
         RelationshipInfoImpl that = (RelationshipInfoImpl) o;
 
+        if (mId != that.mId) return false;
         if (mParentEntityInfo != null ? !mParentEntityInfo.equals(that.mParentEntityInfo) : that.mParentEntityInfo != null)
             return false;
         if (mColumnInfo != null ? !mColumnInfo.equals(that.mColumnInfo) : that.mColumnInfo != null)
@@ -61,7 +64,8 @@ class RelationshipInfoImpl implements RelationshipInfo {
 
     @Override
     public int hashCode() {
-        int result = mParentEntityInfo != null ? mParentEntityInfo.hashCode() : 0;
+        int result = (int) (mId ^ (mId >>> 32));
+        result = 31 * result + (mParentEntityInfo != null ? mParentEntityInfo.hashCode() : 0);
         result = 31 * result + (mColumnInfo != null ? mColumnInfo.hashCode() : 0);
         result = 31 * result + (mChildEntityInfo != null ? mChildEntityInfo.hashCode() : 0);
         return result;

@@ -5,9 +5,7 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnType;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.annotation.processing.ProcessingEnvironment;
 
@@ -26,10 +24,10 @@ public class RelationshipAnalyzer {
     }
 
     public List<RelationshipInfo> analyze(EntityInfo entityInfo) {
-        return analyze(entityInfo, new HashSet<RelationshipInfo>());
+        return performAnalyze(entityInfo, 0L);
     }
 
-    private List<RelationshipInfo> analyze(EntityInfo entityInfo, Set<RelationshipInfo> handledRelationships) {
+    private List<RelationshipInfo> performAnalyze(EntityInfo entityInfo, long id) {
         final List<RelationshipInfo> relationshipInfos = new ArrayList<>();
 
         for (ColumnInfo columnInfo : entityInfo.getColumns()) {
@@ -39,14 +37,13 @@ public class RelationshipAnalyzer {
 
             final EntityInfo childEntityInfo = columnInfo.getChildEntityInfo();
             final RelationshipInfoImpl relationshipInfo = new RelationshipInfoImpl(
+                    id++,
                     entityInfo,
                     columnInfo,
                     childEntityInfo
             );
-            if (handledRelationships.add(relationshipInfo)) {
-                relationshipInfo.setRelationshipInfos(analyze(childEntityInfo, handledRelationships));
-                relationshipInfos.add(relationshipInfo);
-            }
+            relationshipInfo.setRelationshipInfos(performAnalyze(childEntityInfo, id));
+            relationshipInfos.add(relationshipInfo);
         }
 
         return relationshipInfos;
