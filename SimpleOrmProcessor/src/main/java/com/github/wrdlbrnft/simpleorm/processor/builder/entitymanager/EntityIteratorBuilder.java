@@ -67,6 +67,8 @@ class EntityIteratorBuilder {
     private static final Method METHOD_ADD = Methods.stub("add");
     private static final Method METHOD_GET = Methods.stub("get");
     private static final Method METHOD_TRIM = Methods.stub("trim");
+    private static final Method METHOD_FINALIZE = Methods.stub("finalize");
+    private static final Method METHOD_CLOSE = Methods.stub("close");
 
     private static final Map<ColumnType, Type> COLUMN_TYPE_MAP = new MapBuilder<ColumnType, Type>()
             .put(ColumnType.PRIMITIVE_INT, Types.Primitives.INTEGER)
@@ -310,6 +312,16 @@ class EntityIteratorBuilder {
                         block.set(stringBuilder, SimpleOrmTypes.STRING_BUILDER.newInstance(mQuery)).append(";").newLine();
 
                         block.append(new If.Builder()
+                                .add(notNullOrEmpty.call(mSelectionString), new BlockWriter() {
+                                    @Override
+                                    protected void write(Block block) {
+                                        block.append(METHOD_APPEND.callOnTarget(METHOD_APPEND.callOnTarget(stringBuilder, Values.of(" WHERE ")), mSelectionString)).append(";");
+                                    }
+                                })
+                                .build());
+                        block.newLine();
+
+                        block.append(new If.Builder()
                                 .add(notNullOrEmpty.call(mOrderByString), new BlockWriter() {
                                     @Override
                                     protected void write(Block block) {
@@ -324,16 +336,6 @@ class EntityIteratorBuilder {
                                     @Override
                                     protected void write(Block block) {
                                         block.append(METHOD_APPEND.callOnTarget(METHOD_APPEND.callOnTarget(stringBuilder, Values.of(" LIMIT ")), mLimitString)).append(";");
-                                    }
-                                })
-                                .build());
-                        block.newLine();
-
-                        block.append(new If.Builder()
-                                .add(notNullOrEmpty.call(mSelectionString), new BlockWriter() {
-                                    @Override
-                                    protected void write(Block block) {
-                                        block.append(METHOD_APPEND.callOnTarget(METHOD_APPEND.callOnTarget(stringBuilder, Values.of(" WHERE ")), mSelectionString)).append(";");
                                     }
                                 })
                                 .build());
@@ -594,6 +596,24 @@ class EntityIteratorBuilder {
                     @Override
                     protected void write(Block block) {
                         block.append("return ").append(lazyListImplementation.newInstance()).append(";");
+                    }
+                })
+                .build());
+
+        builder.addMethod(new Method.Builder()
+                .setName("finalize")
+                .addThrownException(SimpleOrmTypes.THROWABLE)
+                .setModifiers(EnumSet.of(Modifier.PROTECTED))
+                .addAnnotation(Annotations.forType(Override.class))
+                .setCode(new ArrayList<Variable>(), new BlockWriter() {
+                    @Override
+                    protected void write(Block block) {
+                        block.append(METHOD_FINALIZE.callOnTarget(Methods.SUPER)).append(";").newLine();
+                        block.append(METHOD_CLOSE.callOnTarget(wrapperField)).append(";");
+
+                        for (Field field : wrapperMap.values()) {
+                            block.newLine().append(METHOD_CLOSE.callOnTarget(field)).append(";");
+                        }
                     }
                 })
                 .build());

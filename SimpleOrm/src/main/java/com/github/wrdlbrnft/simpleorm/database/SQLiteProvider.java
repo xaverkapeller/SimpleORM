@@ -9,4 +9,5 @@ package com.github.wrdlbrnft.simpleorm.database;
 public interface SQLiteProvider {
     WritableSQLiteWrapper getWritableWrapper();
     ReadableSQLiteWrapper getReadableWrapper();
+    void close();
 }

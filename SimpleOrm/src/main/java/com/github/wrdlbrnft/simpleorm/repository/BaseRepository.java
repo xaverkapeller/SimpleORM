@@ -3,7 +3,6 @@ package com.github.wrdlbrnft.simpleorm.repository;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.github.wrdlbrnft.simpleorm.entities.EntityIterator;
 import com.github.wrdlbrnft.simpleorm.entities.EntityManager;
 import com.github.wrdlbrnft.simpleorm.Loader;
 import com.github.wrdlbrnft.simpleorm.QueryBuilder;
@@ -28,8 +27,6 @@ import java.util.concurrent.Executors;
  */
 public class BaseRepository<T> implements Repository<T> {
 
-    private static final Executor EXECUTOR = Executors.newSingleThreadExecutor();
-
     static Handler MAIN_THREAD_HANDLER = new Handler(Looper.getMainLooper());
 
     private final TransactionResolver<T> mTransactionResolver = new TransactionResolver<T>() {
@@ -38,7 +35,7 @@ public class BaseRepository<T> implements Repository<T> {
         public Saver<T> commit(SaveParameters<T> parameters) {
             final Callable<Void> callable = new SaveTransactionCallable<>(mEntityManager, parameters);
             final SaverTask<T> task = new SaverTask<>(callable);
-            EXECUTOR.execute(task);
+            mExecutor.execute(task);
             return task;
         }
 
@@ -46,7 +43,7 @@ public class BaseRepository<T> implements Repository<T> {
         public Remover<T> commit(RemoveParameters<T> parameters) {
             final Callable<Void> callable = new RemoveTransactionCallable<>(mEntityManager, parameters);
             final RemoverTask<T> task = new RemoverTask<>(callable);
-            EXECUTOR.execute(task);
+            mExecutor.execute(task);
             return task;
         }
     };
@@ -57,7 +54,7 @@ public class BaseRepository<T> implements Repository<T> {
         public Loader<T> queryFirst(QueryParameters parameters) {
             final Callable<T> callable = new QueryFirstCallable<>(mEntityManager, parameters);
             final LoaderTask<T> task = new LoaderTask<>(callable);
-            EXECUTOR.execute(task);
+            mExecutor.execute(task);
             return task;
         }
 
@@ -65,7 +62,7 @@ public class BaseRepository<T> implements Repository<T> {
         public Loader<List<T>> queryList(QueryParameters parameters) {
             final Callable<List<T>> callable = new QueryListCallable<>(mEntityManager, parameters);
             final LoaderTask<List<T>> task = new LoaderTask<>(callable);
-            EXECUTOR.execute(task);
+            mExecutor.execute(task);
             return task;
         }
 
@@ -76,9 +73,11 @@ public class BaseRepository<T> implements Repository<T> {
     };
 
     private final EntityManager<T> mEntityManager;
+    private final Executor mExecutor;
 
-    public BaseRepository(EntityManager<T> entityManager) {
+    public BaseRepository(Executor executor, EntityManager<T> entityManager) {
         mEntityManager = entityManager;
+        mExecutor = executor;
     }
 
     @Override

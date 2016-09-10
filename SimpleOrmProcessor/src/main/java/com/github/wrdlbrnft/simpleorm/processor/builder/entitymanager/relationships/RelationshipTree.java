@@ -1,8 +1,12 @@
 package com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships;
 
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
+
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created with Android Studio
@@ -31,5 +35,21 @@ public class RelationshipTree {
         }
 
         iterator.onPathFound(backlog);
+    }
+
+    public static Set<EntityInfo> getUniqueEntities(List<RelationshipInfo> relationshipInfos) {
+        final Set<EntityInfo> entityInfos = new HashSet<>();
+
+        RelationshipTree.iterate(relationshipInfos, new Iterator() {
+            @Override
+            public void onPathFound(List<RelationshipInfo> path) {
+                for (RelationshipInfo relationshipInfo : path) {
+                    entityInfos.add(relationshipInfo.getParentEntityInfo());
+                    entityInfos.add(relationshipInfo.getChildEntityInfo());
+                }
+            }
+        });
+
+        return entityInfos;
     }
 }

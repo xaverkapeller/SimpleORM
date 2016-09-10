@@ -1,10 +1,13 @@
 package com.github.wrdlbrnft.simpleorm.processor.builder.entity;
 
+import com.github.wrdlbrnft.codebuilder.annotations.Annotations;
 import com.github.wrdlbrnft.codebuilder.code.Block;
 import com.github.wrdlbrnft.codebuilder.code.BlockWriter;
+import com.github.wrdlbrnft.codebuilder.code.CodeElement;
 import com.github.wrdlbrnft.codebuilder.executables.Constructor;
 import com.github.wrdlbrnft.codebuilder.executables.ExecutableBuilder;
 import com.github.wrdlbrnft.codebuilder.executables.Method;
+import com.github.wrdlbrnft.codebuilder.executables.Methods;
 import com.github.wrdlbrnft.codebuilder.implementations.Implementation;
 import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.codebuilder.types.Types;
@@ -42,13 +45,18 @@ public class EntityImplementationBuilder {
     public EntityImplementationInfo build(final EntityInfo info) {
         final Implementation.Builder builder = new Implementation.Builder();
         builder.setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC));
-        builder.addImplementedType(Types.of(info.getEntityElement()));
+        final Type entityType = Types.of(info.getEntityElement());
+        builder.addImplementedType(entityType);
 
         final List<ColumnInfo> constructorParameters = new ArrayList<>();
         final Map<ColumnInfo, Field> fieldMap = new HashMap<>();
+        final List<FieldInfo> fieldInfos = new ArrayList<>();
         for (ColumnInfo columnInfo : info.getColumns()) {
             constructorParameters.add(columnInfo);
-            fieldMap.put(columnInfo, implementMethod(builder, columnInfo));
+            final Field field = implementMethod(builder, columnInfo);
+            final ExecutableElement getterElement = columnInfo.getGetterElement();
+            fieldInfos.add(new FieldInfo(field, getterElement.getReturnType(), Methods.from(getterElement)));
+            fieldMap.put(columnInfo, field);
         }
 
         builder.addConstructor(new Constructor.Builder()
@@ -84,6 +92,22 @@ public class EntityImplementationBuilder {
                         }
                     }
                 })
+                .build());
+
+        builder.addMethod(new Method.Builder()
+                .setModifiers(EnumSet.of(Modifier.PUBLIC))
+                .setReturnType(Types.Primitives.BOOLEAN)
+                .setName("equals")
+                .addAnnotation(Annotations.forType(Override.class))
+                .setCode(new EqualsExecutableBuilder(fieldInfos, entityType))
+                .build());
+
+        builder.addMethod(new Method.Builder()
+                .setModifiers(EnumSet.of(Modifier.PUBLIC))
+                .setReturnType(Types.Primitives.INTEGER)
+                .setName("hashCode")
+                .addAnnotation(Annotations.forType(Override.class))
+                .setCode(new HashCodeExecutableBuilder(fieldInfos))
                 .build());
 
         return new EntityImplementationInfoImpl(builder.build(), constructorParameters);
@@ -138,5 +162,29 @@ public class EntityImplementationBuilder {
         }
 
         return field;
+    }
+
+    private static class TypeWrapper extends BlockWriter implements Type {
+
+        private Type mInternalType;
+
+        @Override
+        public CodeElement newInstance(CodeElement... parameters) {
+            return Types.createNewInstance(this, parameters);
+        }
+
+        @Override
+        public CodeElement classObject() {
+            return Types.classOf(this);
+        }
+
+        @Override
+        protected void write(Block block) {
+            block.append(mInternalType);
+        }
+
+        public void setType(Type type) {
+            mInternalType = type;
+        }
     }
 }

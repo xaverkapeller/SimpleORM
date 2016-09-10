@@ -2,6 +2,7 @@ package com.github.wrdlbrnft.simpleorm.processor.builder.databases.implementatio
 
 import com.github.wrdlbrnft.codebuilder.annotations.Annotations;
 import com.github.wrdlbrnft.codebuilder.code.Block;
+import com.github.wrdlbrnft.codebuilder.code.BlockWriter;
 import com.github.wrdlbrnft.codebuilder.code.CodeElement;
 import com.github.wrdlbrnft.codebuilder.executables.Constructor;
 import com.github.wrdlbrnft.codebuilder.executables.ExecutableBuilder;
@@ -44,7 +45,10 @@ import javax.lang.model.element.VariableElement;
 
 public class DatabaseImplementationBuilder {
 
-    private static final Method CHANGE_PASSWORD = Methods.stub("changePassword");
+    private static final Method METHOD_CHANGE_PASSWORD = Methods.stub("changePassword");
+    private static final Method METHOD_NEW_SINGLE_THREAD_EXECUTOR = Methods.stub("newSingleThreadExecutor");
+    private static final Method METHOD_FINALIZE = Methods.stub("finalize");
+    private static final Method METHOD_CLOSE = Methods.stub("close");
 
     public interface EntityImplementationCache {
         EntityImplementationInfo get(EntityInfo info);
@@ -80,6 +84,13 @@ public class DatabaseImplementationBuilder {
         final Implementation openHelperImplementation = mSQLiteProviderBuilder.build(databaseInfo);
         builder.addNestedImplementation(openHelperImplementation);
 
+        final Field executorField = new Field.Builder()
+                .setModifiers(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL))
+                .setType(SimpleOrmTypes.EXECUTOR)
+                .setInitialValue(METHOD_NEW_SINGLE_THREAD_EXECUTOR.callOnTarget(SimpleOrmTypes.EXECUTORS))
+                .build();
+        builder.addField(executorField);
+
         final Field providerField = new Field.Builder()
                 .setType(databaseInfo.isEncrypted()
                         ? SimpleOrmTypes.ENCRYPTED_SQLITE_PROVIDER
@@ -107,7 +118,7 @@ public class DatabaseImplementationBuilder {
 
                         @Override
                         protected void write(Block block) {
-                            block.append(CHANGE_PASSWORD.callOnTarget(providerField, mParamPassword)).append(";");
+                            block.append(METHOD_CHANGE_PASSWORD.callOnTarget(providerField, mParamPassword)).append(";");
                         }
 
                         private Variable createParameter(ExecutableElement changePasswordMethod) {
@@ -210,9 +221,23 @@ public class DatabaseImplementationBuilder {
 
                             final Type repositoryType = Types.generic(SimpleOrmTypes.BASE_REPOSITORY, entityType);
                             final CodeElement managerInstance = managerImplementation.newInstance(providerField);
-                            final CodeElement repositoryInstance = repositoryType.newInstance(managerInstance);
+                            final CodeElement repositoryInstance = repositoryType.newInstance(executorField, managerInstance);
                             block.newLine().set(field, repositoryInstance).append(";");
                         }
+                    }
+                })
+                .build());
+
+        builder.addMethod(new Method.Builder()
+                .setName("finalize")
+                .setModifiers(EnumSet.of(Modifier.PROTECTED))
+                .addThrownException(SimpleOrmTypes.THROWABLE)
+                .addAnnotation(Annotations.forType(Override.class))
+                .setCode(new ArrayList<Variable>(), new BlockWriter() {
+                    @Override
+                    protected void write(Block block) {
+                        block.append(METHOD_FINALIZE.callOnTarget(Methods.SUPER)).append(";").newLine();
+                        block.append(METHOD_CLOSE.callOnTarget(providerField)).append(";");
                     }
                 })
                 .build());

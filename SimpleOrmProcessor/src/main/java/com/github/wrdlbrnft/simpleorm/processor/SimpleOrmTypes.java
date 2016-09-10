@@ -1,6 +1,7 @@
 package com.github.wrdlbrnft.simpleorm.processor;
 
 import com.github.wrdlbrnft.codebuilder.types.DefinedType;
+import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.codebuilder.types.Types;
 
 /**
@@ -18,6 +19,9 @@ public class SimpleOrmTypes {
     public static final DefinedType STRING_BUILDER = Types.of(StringBuilder.class);
     public static final DefinedType COLLECTIONS = Types.of("java.util", "Collections");
     public static final DefinedType LONG_SPARSE_ARRAY_COMPAT = Types.of("com.github.wrdlbrnft.simpleorm.utils", "LongSparseArrayCompat");
+
+    public static final DefinedType EXECUTOR = Types.of("java.util.concurrent", "Executor");
+    public static final DefinedType EXECUTORS = Types.of("java.util.concurrent", "Executors");
 
     public static final DefinedType SQLITE_PROVIDER = Types.of("com.github.wrdlbrnft.simpleorm.database", "SQLiteProvider");
     public static final DefinedType ENCRYPTED_SQLITE_PROVIDER = Types.of("com.github.wrdlbrnft.simpleorm.database", "EncryptedSQLiteProvider");
@@ -66,4 +70,6 @@ public class SimpleOrmTypes {
 
     public static final DefinedType STRING_FIELD = Types.of("com.github.wrdlbrnft.simpleorm.fields", "StringField");
     public static final DefinedType STRING_FIELD_IMPL = Types.of("com.github.wrdlbrnft.simpleorm.fields.impl", "StringFieldImpl");
+
+    public static final DefinedType THROWABLE = Types.of(Throwable.class);
 }

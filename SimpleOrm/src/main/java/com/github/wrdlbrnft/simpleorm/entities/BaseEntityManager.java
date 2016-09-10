@@ -30,7 +30,10 @@ public abstract class BaseEntityManager<T> implements EntityManager<T> {
     public T queryFirst(QueryParameters parameters) {
         final ReadableSQLiteWrapper wrapper = mWrapperProvider.getReadableWrapper();
         final EntityIterator<T> iterator = performQuery(wrapper, parameters);
-        return iterator.next();
+        if (iterator.hasNext()) {
+            return iterator.next();
+        }
+        return null;
     }
 
     @Override
