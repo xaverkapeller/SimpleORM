@@ -6,6 +6,7 @@ android {
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 24
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         release {
@@ -18,5 +19,8 @@ android {
 dependencies {
     compile project(path: ':SimpleOrmApi')
     compile 'net.zetetic:android-database-sqlcipher:3.5.1'
-    compile 'com.android.support:support-annotations:24.1.1'
+    compile 'com.android.support:support-annotations:24.2.0'
+    androidTestCompile 'com.android.support.test:runner:0.5'
+    androidTestCompile 'junit:junit:4.12'
+    androidTestCompile project(':SimpleOrmProcessor')
 }
