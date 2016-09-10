@@ -6,13 +6,13 @@ import com.github.wrdlbrnft.codebuilder.code.CodeElement;
 import com.github.wrdlbrnft.codebuilder.elements.values.Values;
 import com.github.wrdlbrnft.codebuilder.executables.ExecutableBuilder;
 import com.github.wrdlbrnft.codebuilder.executables.Method;
+import com.github.wrdlbrnft.codebuilder.executables.Methods;
 import com.github.wrdlbrnft.codebuilder.implementations.Implementation;
 import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.codebuilder.types.Types;
 import com.github.wrdlbrnft.codebuilder.util.Utils;
 import com.github.wrdlbrnft.codebuilder.variables.Field;
 import com.github.wrdlbrnft.codebuilder.variables.Variable;
-import com.github.wrdlbrnft.codebuilder.variables.Variables;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
 import com.github.wrdlbrnft.simpleorm.processor.builder.entity.EntityImplementationBuilder;
@@ -33,6 +33,8 @@ import javax.lang.model.element.Modifier;
  */
 
 public class EntityBuilderBuilder {
+
+    private static final Method METHOD_EMPTY_LIST = Methods.stub("emptyList");
 
     private final ProcessingEnvironment mProcessingEnv;
     private final EntityImplementationBuilder mImplementationBuilder;
@@ -58,10 +60,15 @@ public class EntityBuilderBuilder {
             final ColumnInfo columnInfo = constructorParameters.get(i);
             final Type type = columnInfo.getObjectType();
 
-            final Field field = new Field.Builder()
+            final Field.Builder fieldBuilder = new Field.Builder()
                     .setModifiers(EnumSet.of(Modifier.PRIVATE))
-                    .setType(type)
-                    .build();
+                    .setType(type);
+
+            if (columnInfo.getCollectionType() == ColumnInfo.CollectionType.LIST) {
+                fieldBuilder.setInitialValue(Types.generic(Types.ARRAY_LIST, Types.of(columnInfo.getChildEntityInfo().getEntityElement())).newInstance());
+            }
+
+            final Field field = fieldBuilder.build();
             builder.addField(field);
             parameters[i] = field;
 

@@ -1,4 +1,4 @@
-package com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships;
+package com.github.wrdlbrnft.simpleorm.processor.analyzer.relationships;
 
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
 

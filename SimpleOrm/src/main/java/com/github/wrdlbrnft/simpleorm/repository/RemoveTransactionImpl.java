@@ -1,8 +1,8 @@
 package com.github.wrdlbrnft.simpleorm.repository;
 
-import com.github.wrdlbrnft.simpleorm.entities.RemoveParameters;
 import com.github.wrdlbrnft.simpleorm.RemoveTransaction;
 import com.github.wrdlbrnft.simpleorm.Remover;
+import com.github.wrdlbrnft.simpleorm.entities.RemoveParameters;
 import com.github.wrdlbrnft.simpleorm.fields.BooleanField;
 import com.github.wrdlbrnft.simpleorm.fields.DateField;
 import com.github.wrdlbrnft.simpleorm.fields.DoubleField;
@@ -40,8 +40,8 @@ class RemoveTransactionImpl<T> implements RemoveTransaction<T> {
 
     private final List<T> mEntitiesToRemove = new ArrayList<>();
     private final Selection.Builder mSelectionBuilder = new Selection.Builder();
-
     private final TransactionResolver<T> mResolver;
+    private boolean mRemoveAll = false;
 
     RemoveTransactionImpl(TransactionResolver<T> resolver) {
         mResolver = resolver;
@@ -101,6 +101,12 @@ class RemoveTransactionImpl<T> implements RemoveTransaction<T> {
     }
 
     @Override
+    public RemoveTransaction<T> all() {
+        mRemoveAll = true;
+        return this;
+    }
+
+    @Override
     public RemoveTransaction<T> or() {
         mSelectionBuilder.or();
         return this;
@@ -108,7 +114,10 @@ class RemoveTransactionImpl<T> implements RemoveTransaction<T> {
 
     @Override
     public Remover<T> commit() {
-        final RemoveParameters<T> parameters = new RemoveParametersImpl<>(mEntitiesToRemove, mSelectionBuilder.build());
+        final RemoveParameters<T> parameters = new RemoveParametersImpl<>(
+                mEntitiesToRemove,
+                mRemoveAll ? Selection.Builder.all() : mSelectionBuilder.build()
+        );
         return mResolver.commit(parameters);
     }
 

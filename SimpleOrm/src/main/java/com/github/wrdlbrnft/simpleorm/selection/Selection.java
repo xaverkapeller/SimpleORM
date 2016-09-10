@@ -21,6 +21,10 @@ public interface Selection {
 
     class Builder {
 
+        public static Selection all() {
+            return new AllSelectionImpl();
+        }
+
         private int mOperator = OPERATOR_NONE;
 
         private final List<SelectionElement> mStatements = new ArrayList<>();

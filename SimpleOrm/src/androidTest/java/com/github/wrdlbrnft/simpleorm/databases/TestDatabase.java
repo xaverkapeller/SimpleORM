@@ -12,7 +12,7 @@ import com.github.wrdlbrnft.simpleorm.annotations.Database;
 @Database(name = "TestDb2", version = 1, encrypted = true)
 public interface TestDatabase {
     Repository<ComplexEntity> complexEntities();
-    Repository<SimpleTestEntity> testEntities();
+    Repository<SimpleTestEntity> simpleEntities();
     Repository<ParentTestEntity> parentEntities();
     Repository<ChildTestEntity> childEntities();
 }

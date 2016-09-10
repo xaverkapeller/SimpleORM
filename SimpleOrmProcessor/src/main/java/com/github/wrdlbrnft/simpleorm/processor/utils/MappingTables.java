@@ -33,12 +33,26 @@ public class MappingTables {
         return "_" + entity.getTableName() + "_" + column.getColumnName() + "_Mapping";
     }
 
+    public static String getTriggerName(EntityInfo entity, ColumnInfo column) {
+        return "_Trigger" + getTableName(entity, column);
+    }
+
     public static String createMappingTableStatement(EntityInfo entity, ColumnInfo column) {
-        return "CREATE TABLE " + MappingTables.getTableName(entity, column) + " (" +
+        return "CREATE TABLE " + getTableName(entity, column) + " (" +
                 COLUMN_PARENT_ID + " INTEGER, " +
-                COLUMN_CHILD_ID + " INTEGER," +
+                COLUMN_CHILD_ID + " INTEGER, " +
                 COLUMN_NONCE + " TEXT UNIQUE" +
                 ");";
+    }
+
+    public static String createMappingTableTriggerStatement(EntityInfo entity, ColumnInfo column) {
+        final EntityInfo childEntityInfo = column.getChildEntityInfo();
+        final String childTableName = childEntityInfo.getTableName();
+        final String childIdColumn = entity.getIdColumn().getColumnName();
+        return "CREATE TRIGGER " + getTriggerName(entity, column) + " "
+                + "AFTER DELETE ON " + childTableName + " FOR EACH ROW BEGIN "
+                + "DELETE FROM " + getTableName(entity, column) + " WHERE " + getTableName(entity, column) + "." + COLUMN_CHILD_ID + "=OLD." + childIdColumn + "; "
+                + "END";
     }
 
     public static Variable appendContentValuesForMapping(Block block, Variable parentId, Variable childId) {

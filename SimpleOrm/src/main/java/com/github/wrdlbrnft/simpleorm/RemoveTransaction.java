@@ -34,6 +34,7 @@ public interface RemoveTransaction<T> {
     IntRemoveBuilder<T> where(IntField<T> field);
     LongRemoveBuilder<T> where(LongField<T> field);
     RemoveTransaction<T> and();
+    RemoveTransaction<T> all();
     RemoveTransaction<T> or();
     Remover<T> commit();
 }

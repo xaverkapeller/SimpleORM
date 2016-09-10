@@ -1,14 +1,17 @@
 package com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager;
 
 import com.github.wrdlbrnft.codebuilder.code.Block;
+import com.github.wrdlbrnft.codebuilder.code.BlockWriter;
 import com.github.wrdlbrnft.codebuilder.code.CodeElement;
 import com.github.wrdlbrnft.codebuilder.elements.forloop.item.Foreach;
+import com.github.wrdlbrnft.codebuilder.elements.ifs.If;
 import com.github.wrdlbrnft.codebuilder.elements.values.Values;
 import com.github.wrdlbrnft.codebuilder.executables.ExecutableBuilder;
 import com.github.wrdlbrnft.codebuilder.executables.Method;
 import com.github.wrdlbrnft.codebuilder.executables.Methods;
 import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.codebuilder.types.Types;
+import com.github.wrdlbrnft.codebuilder.util.Operators;
 import com.github.wrdlbrnft.codebuilder.variables.Field;
 import com.github.wrdlbrnft.codebuilder.variables.Variable;
 import com.github.wrdlbrnft.codebuilder.variables.Variables;
@@ -74,8 +77,16 @@ class PerformSaveExecutableBuilder extends ExecutableBuilder {
                     }
 
                     private void appendSave(Block block, EntityInfo parent, ColumnInfo parentColumn, Variable parentId, final EntityInfo child, Variable entity) {
-                        final List<ColumnInfo> entityColumns = new ArrayList<>();
+                        block.append(new If.Builder()
+                                .add(Operators.operate(entity, "==", Values.ofNull()), new BlockWriter() {
+                                    @Override
+                                    protected void write(Block block) {
+                                        block.append("continue;");
+                                    }
+                                })
+                                .build()).newLine();
 
+                        final List<ColumnInfo> entityColumns = new ArrayList<>();
                         final Variable values = Variables.of(SimpleOrmTypes.CONTENT_VALUES, Modifier.FINAL);
                         block.set(values, SimpleOrmTypes.CONTENT_VALUES.newInstance()).append(";");
                         for (ColumnInfo columnInfo : child.getColumns()) {
@@ -118,11 +129,28 @@ class PerformSaveExecutableBuilder extends ExecutableBuilder {
                             if (collectionType == ColumnInfo.CollectionType.NONE) {
                                 final Variable childEntity = Variables.of(childEntityType, Modifier.FINAL);
                                 block.set(childEntity, Methods.from(entityColumn.getGetterElement()).callOnTarget(entity)).append(";").newLine();
-                                appendSave(block, child, entityColumn, id, childEntityInfo, childEntity);
+                                block.append(new If.Builder()
+                                        .add(Operators.operate(childEntity, "!=", Values.ofNull()), new BlockWriter() {
+                                            @Override
+                                            protected void write(Block block) {
+                                                appendSave(block, child, entityColumn, id, childEntityInfo, childEntity);
+                                            }
+                                        })
+                                        .build());
                             } else if (collectionType == ColumnInfo.CollectionType.LIST) {
+                                final Variable childEntityList = Variables.of(Types.generic(Types.LIST, childEntityType), Modifier.FINAL);
+                                block.set(childEntityList, Methods.from(entityColumn.getGetterElement()).callOnTarget(entity)).append(";").newLine();
+                                block.append(new If.Builder()
+                                        .add(Operators.operate(childEntityList, "==", Values.ofNull()), new BlockWriter() {
+                                            @Override
+                                            protected void write(Block block) {
+                                                block.append("continue;");
+                                            }
+                                        })
+                                        .build()).newLine();
                                 block.append(new Foreach.Builder()
                                         .setItemType(childEntityType)
-                                        .setCollection(Methods.from(entityColumn.getGetterElement()).callOnTarget(entity))
+                                        .setCollection(childEntityList)
                                         .setIteration(new Foreach.Iteration() {
                                             @Override
                                             public void onIteration(Block block, Variable childEntity) {

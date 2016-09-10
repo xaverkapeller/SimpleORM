@@ -18,13 +18,12 @@ import com.github.wrdlbrnft.codebuilder.variables.Variables;
 import com.github.wrdlbrnft.simpleorm.processor.SimpleOrmTypes;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.relationships.RelationshipInfo;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.relationships.RelationshipTree;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterInfo;
-import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipInfo;
-import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipTree;
 import com.github.wrdlbrnft.simpleorm.processor.utils.MappingTables;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -53,14 +52,16 @@ class PerformRemoveExecutableBuilder extends ExecutableBuilder {
     private final EntityInfo mEntityInfo;
     private final List<RelationshipInfo> mRelationshipInfos;
     private final Map<TypeAdapterInfo, Field> mAdapterFieldMap;
+    private final Method mCreateRemoveQuery;
 
     private Variable mWritableSQLiteWrapper;
     private Variable mRemoveParameters;
 
-    PerformRemoveExecutableBuilder(EntityInfo entityInfo, List<RelationshipInfo> relationshipInfos, Map<TypeAdapterInfo, Field> adapterFieldMap) {
+    PerformRemoveExecutableBuilder(EntityInfo entityInfo, List<RelationshipInfo> relationshipInfos, Map<TypeAdapterInfo, Field> adapterFieldMap, Method createRemoveQuery) {
         mEntityInfo = entityInfo;
         mRelationshipInfos = relationshipInfos;
         mAdapterFieldMap = adapterFieldMap;
+        mCreateRemoveQuery = createRemoveQuery;
     }
 
     @Override
@@ -191,13 +192,11 @@ class PerformRemoveExecutableBuilder extends ExecutableBuilder {
         return queryList;
     }
 
-    private List<CodeElement> createRemoveQueries(List<RelationshipInfo> relationInfos, Variable selection) {
+    private List<CodeElement> createRemoveQueries(final List<RelationshipInfo> relationInfos, final Variable selection) {
         final List<CodeElement> queryList = new ArrayList<>();
 
         final StringBuilder removeEntityQueryBuilder = new StringBuilder();
-        final StringBuilder removeMappingQueryBuilder = new StringBuilder();
 
-        RelationshipInfo previousInfo = null;
         final int startIndex = relationInfos.size() - 1;
         for (int i = startIndex; i >= 0; i--) {
             final RelationshipInfo relationInfo = relationInfos.get(i);
@@ -211,29 +210,22 @@ class PerformRemoveExecutableBuilder extends ExecutableBuilder {
             final String childIdColumn = child.getIdColumn().getColumnName();
 
             if (i == startIndex) {
-                removeEntityQueryBuilder.append("DELETE FROM ").append(childTableName).append(" WHERE rowid in (")
-                        .append("SELECT ").append(childTableName).append(".rowid FROM ").append(childTableName);
-
-                removeMappingQueryBuilder.append("DELETE FROM ").append(mappingTableName).append(" WHERE rowid in (")
-                        .append("SELECT ").append(mappingTableName).append(".rowid FROM ").append(mappingTableName);
+                removeEntityQueryBuilder.append("SELECT ").append(childTableName).append(".rowid FROM ").append(childTableName);
             }
 
             removeEntityQueryBuilder.append(" JOIN ").append(mappingTableName).append(" ON ").append(childTableName).append(".").append(childIdColumn).append("=").append(mappingTableName).append(".").append(MappingTables.COLUMN_CHILD_ID)
                     .append(" JOIN ").append(parentTableName).append(" ON ").append(mappingTableName).append(".").append(MappingTables.COLUMN_PARENT_ID).append("=").append(parentTableName).append(".").append(parentIdColumn);
-
-            if(previousInfo != null) {
-                removeMappingQueryBuilder.append(" JOIN ").append(mappingTableName).append(" ON ").append(childTableName).append(".").append(childIdColumn).append("=").append(mappingTableName).append(".").append(MappingTables.COLUMN_CHILD_ID);
-            }
-            removeMappingQueryBuilder.append(" JOIN ").append(parentTableName).append(" ON ").append(mappingTableName).append(".").append(MappingTables.COLUMN_PARENT_ID).append("=").append(parentTableName + ".").append(parentIdColumn);
-
-            previousInfo = relationInfo;
         }
 
-        removeEntityQueryBuilder.append(" WHERE ");
-        removeMappingQueryBuilder.append(" WHERE ");
-
-        queryList.add(new Block().append(Values.of(removeEntityQueryBuilder.toString())).append(" + ").append(selection).append(" + ").append(Values.of(")")));
-        queryList.add(new Block().append(Values.of(removeMappingQueryBuilder.toString())).append(" + ").append(selection).append(" + ").append(Values.of(")")));
+        queryList.add(new BlockWriter() {
+            @Override
+            protected void write(Block block) {
+                final String childTableName = relationInfos.get(startIndex).getChildEntityInfo().getTableName();
+                block.append(Values.of("DELETE FROM " + childTableName + " WHERE rowid in (")).append(" + ")
+                        .append(mCreateRemoveQuery.call(Values.of(removeEntityQueryBuilder.toString()), selection))
+                        .append(" + ").append(Values.of(")"));
+            }
+        });
 
         return queryList;
     }

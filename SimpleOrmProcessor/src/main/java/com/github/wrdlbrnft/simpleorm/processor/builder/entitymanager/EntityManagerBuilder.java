@@ -2,6 +2,9 @@ package com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager;
 
 import com.github.wrdlbrnft.codebuilder.annotations.Annotations;
 import com.github.wrdlbrnft.codebuilder.code.Block;
+import com.github.wrdlbrnft.codebuilder.code.BlockWriter;
+import com.github.wrdlbrnft.codebuilder.elements.ifs.If;
+import com.github.wrdlbrnft.codebuilder.elements.values.Values;
 import com.github.wrdlbrnft.codebuilder.executables.Constructor;
 import com.github.wrdlbrnft.codebuilder.executables.ExecutableBuilder;
 import com.github.wrdlbrnft.codebuilder.executables.Method;
@@ -9,6 +12,7 @@ import com.github.wrdlbrnft.codebuilder.executables.Methods;
 import com.github.wrdlbrnft.codebuilder.implementations.Implementation;
 import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.codebuilder.types.Types;
+import com.github.wrdlbrnft.codebuilder.util.Operators;
 import com.github.wrdlbrnft.codebuilder.variables.Field;
 import com.github.wrdlbrnft.codebuilder.variables.Variable;
 import com.github.wrdlbrnft.codebuilder.variables.Variables;
@@ -16,10 +20,10 @@ import com.github.wrdlbrnft.simpleorm.processor.SimpleOrmTypes;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnType;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.relationships.RelationshipAnalyzer;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.relationships.RelationshipInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterInfo;
 import com.github.wrdlbrnft.simpleorm.processor.builder.databases.implementation.DatabaseImplementationBuilder;
-import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipAnalyzer;
-import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipInfo;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -61,6 +65,8 @@ public class EntityManagerBuilder {
     static final Method METHOD_CONVERT_TO = Methods.stub("convertTo");
     static final Method METHOD_CONVERT_FROM = Methods.stub("convertFrom");
     static final Method METHOD_VERIFY_ID = Methods.stub("verifyIdOrThrow");
+    private static final Method METHOD_APPEND = Methods.stub("append");
+    private static final Method METHOD_TRIM = Methods.stub("trim");
 
     private final ProcessingEnvironment mProcessingEnvironment;
     private final EntityIteratorBuilder mIteratorBuilder;
@@ -115,6 +121,69 @@ public class EntityManagerBuilder {
         final EntityIteratorInfo iteratorInfo = mIteratorBuilder.build(info, relationshipInfos, cache, adapterFieldMap);
         builder.addNestedImplementation(iteratorInfo.getImplementation());
 
+        final Method notNullOrEmpty = new Method.Builder()
+                .setReturnType(Types.Primitives.BOOLEAN)
+                .setModifiers(EnumSet.of(Modifier.PRIVATE))
+                .setCode(new ExecutableBuilder() {
+
+                    private Variable mString;
+
+                    @Override
+                    protected List<Variable> createParameters() {
+                        final List<Variable> parameters = new ArrayList<>();
+                        parameters.add(mString = Variables.of(Types.STRING));
+                        return parameters;
+                    }
+
+                    @Override
+                    protected void write(Block block) {
+                        block.append("return ")
+                                .append(Operators.operate(mString, "!=", Values.ofNull()))
+                                .append(" && ")
+                                .append(Values.invert(METHOD_IS_EMPTY.callOnTarget(METHOD_TRIM.callOnTarget(mString))))
+                                .append(";");
+                    }
+                })
+                .build();
+        builder.addMethod(notNullOrEmpty);
+
+        final Method createRemoveQuery = new Method.Builder()
+                .setModifiers(EnumSet.of(Modifier.PRIVATE))
+                .setReturnType(Types.STRING)
+                .setCode(new ExecutableBuilder() {
+
+                    private Variable mQuery;
+                    private Variable mSelection;
+
+                    @Override
+                    protected List<Variable> createParameters() {
+                        final List<Variable> parameters = new ArrayList<>();
+                        parameters.add(mQuery = Variables.of(Types.STRING));
+                        parameters.add(mSelection = Variables.of(Types.STRING));
+                        return parameters;
+                    }
+
+                    @Override
+                    protected void write(Block block) {
+                        final Variable stringBuilder = Variables.of(SimpleOrmTypes.STRING_BUILDER, Modifier.FINAL);
+                        block.set(stringBuilder, SimpleOrmTypes.STRING_BUILDER.newInstance(mQuery)).append(";").newLine();
+
+                        block.append(new If.Builder()
+                                .add(notNullOrEmpty.call(mSelection), new BlockWriter() {
+                                    @Override
+                                    protected void write(Block block) {
+                                        block.append(METHOD_APPEND.callOnTarget(METHOD_APPEND.callOnTarget(stringBuilder, Values.of(" WHERE ")), mSelection)).append(";");
+                                    }
+                                })
+                                .build());
+                        block.newLine();
+
+                        block.append("return ").append(Methods.TO_STRING.callOnTarget(stringBuilder)).append(";");
+                    }
+                })
+                .build();
+        builder.addMethod(createRemoveQuery);
+
         builder.addMethod(new Method.Builder()
                 .setName("performSave")
                 .setModifiers(EnumSet.of(Modifier.PROTECTED))
@@ -126,7 +195,7 @@ public class EntityManagerBuilder {
                 .setName("performRemove")
                 .setModifiers(EnumSet.of(Modifier.PROTECTED))
                 .addAnnotation(Annotations.forType(Override.class))
-                .setCode(new PerformRemoveExecutableBuilder(info, relationshipInfos, adapterFieldMap))
+                .setCode(new PerformRemoveExecutableBuilder(info, relationshipInfos, adapterFieldMap, createRemoveQuery))
                 .build());
 
         builder.addMethod(new Method.Builder()

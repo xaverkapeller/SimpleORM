@@ -9,21 +9,15 @@ import com.github.wrdlbrnft.codebuilder.executables.Methods;
 import com.github.wrdlbrnft.codebuilder.implementations.Implementation;
 import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.codebuilder.types.Types;
-import com.github.wrdlbrnft.codebuilder.util.MapBuilder;
 import com.github.wrdlbrnft.codebuilder.variables.Variable;
 import com.github.wrdlbrnft.codebuilder.variables.Variables;
 import com.github.wrdlbrnft.simpleorm.processor.SimpleOrmTypes;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.databases.DatabaseInfo;
-import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnInfo;
-import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnType;
-import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.Constraint;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
-import com.github.wrdlbrnft.simpleorm.processor.utils.MappingTables;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -36,24 +30,6 @@ import javax.lang.model.element.Modifier;
  */
 
 public class SQLiteProviderBuilder {
-
-    private static final Method METHOD_EXEC_SQL = Methods.stub("execSql");
-
-    private static final Map<ColumnType, String> SQL_TYPE_MAP = new MapBuilder<ColumnType, String>()
-            .put(ColumnType.PRIMITIVE_BOOLEAN, "INTEGER")
-            .put(ColumnType.BOOLEAN, "INTEGER")
-            .put(ColumnType.PRIMITIVE_DOUBLE, "REAL")
-            .put(ColumnType.DOUBLE, "REAL")
-            .put(ColumnType.PRIMITIVE_FLOAT, "REAL")
-            .put(ColumnType.FLOAT, "REAL")
-            .put(ColumnType.PRIMITIVE_INT, "INTEGER")
-            .put(ColumnType.INT, "INTEGER")
-            .put(ColumnType.DATE, "INTEGER")
-            .put(ColumnType.STRING, "TEXT")
-            .put(ColumnType.ENTITY, "INTEGER")
-            .put(ColumnType.PRIMITIVE_LONG, "INTEGER")
-            .put(ColumnType.LONG, "INTEGER")
-            .build();
 
     private final ProcessingEnvironment mProcessingEnvironment;
 
@@ -113,29 +89,42 @@ public class SQLiteProviderBuilder {
                 .setModifiers(EnumSet.of(Modifier.PROTECTED))
                 .setCode(new ExecutableBuilder() {
 
-                    private Variable mParamManager;
+                    private Variable mManager;
 
                     @Override
                     protected List<Variable> createParameters() {
                         final List<Variable> parameters = new ArrayList<>();
-                        parameters.add(mParamManager = Variables.of(SimpleOrmTypes.SQLITE_DATABASE_MANAGER));
+                        parameters.add(mManager = Variables.of(SimpleOrmTypes.SQLITE_DATABASE_MANAGER));
                         return parameters;
                     }
 
                     @Override
                     protected void write(Block block) {
                         final Set<EntityInfo> entityInfos = databaseInfo.getEntityInfos();
-                        boolean appendNewLine = false;
+                        final List<Query> tableQueries = new ArrayList<>();
+                        final List<Query> triggerQueries = new ArrayList<>();
                         for (EntityInfo entityInfo : entityInfos) {
-                            final List<String> statements = getCreateTableStatement(entityInfo);
-                            for (String statement : statements) {
-                                if (appendNewLine) {
-                                    block.newLine();
-                                } else {
-                                    appendNewLine = true;
-                                }
-                                block.append(METHOD_EXEC_SQL.callOnTarget(mParamManager, Values.of(statement))).append(";");
+                            final CreateQueries createQueries = QueryFactory.createQueriesFor(entityInfo);
+                            tableQueries.addAll(createQueries.getTableQueries());
+                            triggerQueries.addAll(createQueries.getTriggerQueries());
+                        }
+
+                        boolean appendNewLine = false;
+                        for (Query query : tableQueries) {
+                            if (appendNewLine) {
+                                block.newLine();
+                            } else {
+                                appendNewLine = true;
                             }
+                            block.append(query.execute(mManager)).append(";");
+                        }
+                        for (Query query : triggerQueries) {
+                            if (appendNewLine) {
+                                block.newLine();
+                            } else {
+                                appendNewLine = true;
+                            }
+                            block.append(query.execute(mManager)).append(";");
                         }
                     }
                 })
@@ -167,39 +156,5 @@ public class SQLiteProviderBuilder {
                 .build());
 
         return builder.build();
-    }
-
-    private List<String> getCreateTableStatement(EntityInfo entityInfo) {
-        final List<String> createQueries = new ArrayList<>();
-        final StringBuilder builder = new StringBuilder();
-
-        builder.append("CREATE TABLE ").append(entityInfo.getTableName()).append(" (");
-
-        boolean appendSeparator = false;
-        for (ColumnInfo column : entityInfo.getColumns()) {
-            if (column.getColumnType() == ColumnType.ENTITY) {
-                createQueries.add(MappingTables.createMappingTableStatement(entityInfo, column));
-                continue;
-            }
-
-            if (appendSeparator) {
-                builder.append(", ");
-            } else {
-                appendSeparator = true;
-            }
-            appendColumn(builder, column);
-        }
-
-        builder.append(");");
-        createQueries.add(builder.toString());
-        return createQueries;
-    }
-
-    private void appendColumn(StringBuilder builder, ColumnInfo column) {
-        builder.append(column.getColumnName()).append(" ").append(SQL_TYPE_MAP.get(column.getColumnType()));
-
-        for (Constraint constraint : column.getConstraints()) {
-            builder.append(" ").append(constraint.getSqlKeyword());
-        }
     }
 }

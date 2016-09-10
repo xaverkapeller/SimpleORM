@@ -30,8 +30,8 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapterInfo;
 import com.github.wrdlbrnft.simpleorm.processor.builder.databases.implementation.DatabaseImplementationBuilder;
 import com.github.wrdlbrnft.simpleorm.processor.builder.entity.EntityImplementationInfo;
-import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipInfo;
-import com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.relationships.RelationshipTree;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.relationships.RelationshipInfo;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.relationships.RelationshipTree;
 import com.github.wrdlbrnft.simpleorm.processor.utils.MappingTables;
 
 import java.util.ArrayList;
@@ -286,7 +286,7 @@ class EntityIteratorBuilder {
                 .build();
         builder.addMethod(notNullOrEmpty);
 
-        final Method performQuery = new Method.Builder()
+        final Method createQueryString = new Method.Builder()
                 .setReturnType(Types.STRING)
                 .setModifiers(EnumSet.of(Modifier.PRIVATE))
                 .setCode(new ExecutableBuilder() {
@@ -345,7 +345,7 @@ class EntityIteratorBuilder {
                     }
                 })
                 .build();
-        builder.addMethod(performQuery);
+        builder.addMethod(createQueryString);
 
         builder.addConstructor(new Constructor.Builder()
                 .setCode(new ExecutableBuilder() {
@@ -381,12 +381,6 @@ class EntityIteratorBuilder {
                         final Variable selectionArgs = Variables.of(Types.arrayOf(Types.STRING), Modifier.FINAL);
                         block.set(selectionArgs, METHOD_GET_SELECTION_ARGS.callOnTarget(selection)).append(";").newLine();
 
-                        final Variable orderByString = Variables.of(Types.STRING, Modifier.FINAL);
-                        block.set(orderByString, METHOD_GET_ORDER_BY.callOnTarget(mQueryParameters)).append(";").newLine();
-
-                        final Variable limitString = Variables.of(Types.STRING, Modifier.FINAL);
-                        block.set(limitString, METHOD_GET_LIMIT.callOnTarget(mQueryParameters)).append(";").newLine();
-
                         block.set(wrapperField, METHOD_QUERY.callOnTarget(mReadableSQLiteWrapper,
                                 Values.of(info.getTableName()),
                                 ArrayUtils.of(Types.STRING, columns),
@@ -394,8 +388,8 @@ class EntityIteratorBuilder {
                                 selectionArgs,
                                 Values.ofNull(),
                                 Values.ofNull(),
-                                orderByString,
-                                limitString
+                                METHOD_GET_ORDER_BY.callOnTarget(mQueryParameters),
+                                METHOD_GET_LIMIT.callOnTarget(mQueryParameters)
                         )).append(";");
                         for (ColumnInfo columnInfo : info.getColumns()) {
                             if (columnInfo.getColumnType() == ColumnType.ENTITY) {
@@ -412,7 +406,7 @@ class EntityIteratorBuilder {
                                 final RelationshipInfo key = path.get(path.size() - 1);
                                 final Field wrapperField = wrapperMap.get(key);
                                 block.newLine().set(wrapperField, METHOD_QUERY.callOnTarget(mReadableSQLiteWrapper,
-                                        performQuery.call(Values.of(query), selectionString, orderByString, limitString),
+                                        createQueryString.call(Values.of(query), selectionString, Values.ofNull(), Values.ofNull()),
                                         selectionArgs
                                 )).append(";");
                                 for (ColumnInfo columnInfo : key.getChildEntityInfo().getColumns()) {
