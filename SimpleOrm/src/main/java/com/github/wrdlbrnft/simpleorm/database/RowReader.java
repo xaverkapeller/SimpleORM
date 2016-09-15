@@ -12,11 +12,13 @@ public interface RowReader {
     int getInt(int index);
     long getLong(int index);
     short getShort(int index);
+    boolean getBoolean(int index);
     Float getFloatOrNull(int index);
     Double getDoubleOrNull(int index);
     Integer getIntOrNull(int index);
     Long getLongOrNull(int index);
     Short getShortOrNull(int index);
+    Boolean getBooleanOrNull(int index);
     byte[] getBlob(int index);
     String getString(int index);
 }

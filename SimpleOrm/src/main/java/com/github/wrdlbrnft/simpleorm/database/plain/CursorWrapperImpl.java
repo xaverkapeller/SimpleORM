@@ -48,6 +48,11 @@ class CursorWrapperImpl implements CursorWrapper {
     }
 
     @Override
+    public boolean getBoolean(int index) {
+        return mCursor.getInt(index) > 0;
+    }
+
+    @Override
     public Float getFloatOrNull(int index) {
         return mCursor.isNull(index) ? null : mCursor.getFloat(index);
     }
@@ -70,6 +75,11 @@ class CursorWrapperImpl implements CursorWrapper {
     @Override
     public Short getShortOrNull(int index) {
         return mCursor.isNull(index) ? null : mCursor.getShort(index);
+    }
+
+    @Override
+    public Boolean getBooleanOrNull(int index) {
+        return mCursor.isNull(index) ? null : mCursor.getInt(index) > 0;
     }
 
     @Override
