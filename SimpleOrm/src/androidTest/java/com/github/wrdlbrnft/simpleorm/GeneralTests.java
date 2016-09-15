@@ -3,14 +3,10 @@ package com.github.wrdlbrnft.simpleorm;
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
 
-import com.github.wrdlbrnft.simpleorm.databases.ChildTestEntityBuilder;
 import com.github.wrdlbrnft.simpleorm.databases.ComplexEntity;
-import com.github.wrdlbrnft.simpleorm.databases.ComplexEntityBuilder;
 import com.github.wrdlbrnft.simpleorm.databases.F;
 import com.github.wrdlbrnft.simpleorm.databases.ParentTestEntity;
-import com.github.wrdlbrnft.simpleorm.databases.ParentTestEntityBuilder;
 import com.github.wrdlbrnft.simpleorm.databases.SimpleTestEntity;
-import com.github.wrdlbrnft.simpleorm.databases.SimpleTestEntityBuilder;
 import com.github.wrdlbrnft.simpleorm.databases.TestDatabase;
 import com.github.wrdlbrnft.simpleorm.databases.TestDatabaseFactory;
 
@@ -19,108 +15,30 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * Created with Android Studio
  * User: Xaver
- * Date: 10/09/16
+ * Da te: 10/09/16
  */
 
 public class GeneralTests {
-
-    private static final String PASSWORD = "35yhugnuah03y]ing";
-
-    private static final ComplexEntity ENTITY_NO_CHILDREN = new ComplexEntityBuilder()
-            .setValue(27)
-            .setText("Asdf")
-            .build();
-
-    private static final ComplexEntity ENTITY_NO_CHILDREN_ALTERNATIVE = new ComplexEntityBuilder()
-            .setValue(47)
-            .setText("asdf")
-            .build();
-
-    private static final ComplexEntity ENTITY_WITH_CHILDREN_A = new ComplexEntityBuilder()
-            .setValue(37)
-            .setText("jklö")
-            .setEntities(Arrays.asList(
-                    new ParentTestEntityBuilder()
-                            .setChildren(Arrays.asList(
-                                    new ChildTestEntityBuilder()
-                                            .setText("Test")
-                                            .setValue(0.3)
-                                            .build(),
-                                    new ChildTestEntityBuilder()
-                                            .setText("tttt")
-                                            .setValue(0.111)
-                                            .build()
-                            ))
-                            .build(),
-                    new ParentTestEntityBuilder()
-                            .setChildren(Arrays.asList(
-                                    new ChildTestEntityBuilder()
-                                            .setText("35487")
-                                            .setValue(3.141592653589793)
-                                            .build(),
-                                    new ChildTestEntityBuilder()
-                                            .setText("sdfg")
-                                            .setValue(-10.0)
-                                            .build()
-                            ))
-                            .build()
-            ))
-            .build();
-
-    private static final ComplexEntity ENTITY_WITH_CHILDREN_B = new ComplexEntityBuilder()
-            .setValue(37)
-            .setText("jklö")
-            .setEntities(Arrays.asList(
-                    new ParentTestEntityBuilder()
-                            .setChildren(Arrays.asList(
-                                    new ChildTestEntityBuilder()
-                                            .setText("Test")
-                                            .setValue(0.3)
-                                            .build(),
-                                    new ChildTestEntityBuilder()
-                                            .setText("tttt")
-                                            .setValue(0.111)
-                                            .build()
-                            ))
-                            .build(),
-                    new ParentTestEntityBuilder()
-                            .setChildren(Arrays.asList(
-                                    new ChildTestEntityBuilder()
-                                            .setText("35487")
-                                            .setValue(3.141592653589793)
-                                            .build(),
-                                    new ChildTestEntityBuilder()
-                                            .setText("sdfg")
-                                            .setValue(-10.0)
-                                            .build()
-                            ))
-                            .build()
-            ))
-            .build();
-
-    private static final long SIMPLE_ENTITY_ID = 47L;
-    private static final SimpleTestEntity SIMPLE_ENTITY = new SimpleTestEntityBuilder()
-            .setId(SIMPLE_ENTITY_ID)
-            .setText("qwerty")
-            .build();
 
     private TestDatabase mDatabase;
 
     @Before
     public void setUp() {
         final Context context = InstrumentationRegistry.getContext();
-        mDatabase = TestDatabaseFactory.newInstance(context, PASSWORD);
+        mDatabase = TestDatabaseFactory.newInstance(context, TestData.PASSWORD);
         mDatabase.complexEntities().save()
-                .entity(ENTITY_NO_CHILDREN)
-                .entity(ENTITY_NO_CHILDREN_ALTERNATIVE)
-                .entity(ENTITY_WITH_CHILDREN_A)
-                .entity(ENTITY_WITH_CHILDREN_B)
+                .entity(TestData.ENTITY_NO_CHILDREN)
+                .entity(TestData.ENTITY_NO_CHILDREN_ALTERNATIVE)
+                .entity(TestData.ENTITY_WITH_CHILDREN_A)
+                .entity(TestData.ENTITY_WITH_CHILDREN_B)
+                .commit().now();
+        mDatabase.simpleEntities().save()
+                .entity(TestData.SIMPLE_ENTITY)
                 .commit().now();
     }
 
@@ -134,12 +52,12 @@ public class GeneralTests {
 
     @Test
     public void testSimpleWhere() {
-
         final List<ComplexEntity> list = mDatabase.complexEntities().find()
                 .where(F.complexentity.value).isEqualTo(27)
                 .getList().now();
 
         Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
         for (ComplexEntity entity : list) {
             Assert.assertEquals(27, entity.getValue());
         }
@@ -147,12 +65,12 @@ public class GeneralTests {
 
     @Test
     public void testStartsWith() {
-
         final List<ComplexEntity> list = mDatabase.complexEntities().find()
                 .where(F.complexentity.text).startsWith("a")
                 .getList().now();
 
         Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
         for (ComplexEntity entity : list) {
             final String text = entity.getText();
             Assert.assertNotNull(text);
@@ -161,35 +79,143 @@ public class GeneralTests {
     }
 
     @Test
+    public void testEndsWith() {
+        final List<ComplexEntity> list = mDatabase.complexEntities().find()
+                .where(F.complexentity.text).endsWith("f")
+                .getList().now();
+
+        Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
+        for (ComplexEntity entity : list) {
+            final String text = entity.getText();
+            Assert.assertNotNull(text);
+            Assert.assertTrue(text.toLowerCase().endsWith("f"));
+        }
+    }
+
+    @Test
+    public void testContains() {
+        final List<ComplexEntity> list = mDatabase.complexEntities().find()
+                .where(F.complexentity.text).contains("sd")
+                .getList().now();
+
+        Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
+        for (ComplexEntity entity : list) {
+            final String text = entity.getText();
+            Assert.assertNotNull(text);
+            Assert.assertTrue(text.toLowerCase().contains("sd"));
+        }
+    }
+
+    @Test
+    public void testGreaterThan() {
+        final List<ComplexEntity> list = mDatabase.complexEntities().find()
+                .where(F.complexentity.value).isGreaterThan(27L)
+                .getList().now();
+
+        Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
+        for (ComplexEntity entity : list) {
+            Assert.assertTrue(entity.getValue() > 27L);
+        }
+    }
+
+    @Test
+    public void testGreaterThanOrEqual() {
+        final List<ComplexEntity> list = mDatabase.complexEntities().find()
+                .where(F.complexentity.value).isGreaterThanOrEqualTo(37L)
+                .getList().now();
+
+        Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
+        for (ComplexEntity entity : list) {
+            Assert.assertTrue(entity.getValue() >= 37L);
+        }
+    }
+
+    @Test
+    public void testLessThan() {
+        final List<ComplexEntity> list = mDatabase.complexEntities().find()
+                .where(F.complexentity.value).isLessThan(37L)
+                .getList().now();
+
+        Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
+        for (ComplexEntity entity : list) {
+            Assert.assertTrue(entity.getValue() < 37L);
+        }
+    }
+
+    @Test
+    public void testLessThanOrEqual() {
+        final List<ComplexEntity> list = mDatabase.complexEntities().find()
+                .where(F.complexentity.value).isLessThanOrEqualTo(27L)
+                .getList().now();
+
+        Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
+        for (ComplexEntity entity : list) {
+            Assert.assertTrue(entity.getValue() <= 27L);
+        }
+    }
+
+    @Test
     public void testSaveWithId() {
         mDatabase.simpleEntities().save()
-                .entity(SIMPLE_ENTITY)
+                .entity(TestData.SIMPLE_ENTITY_WITH_ID)
                 .commit();
-        Assert.assertEquals(SIMPLE_ENTITY_ID, (long) SIMPLE_ENTITY.getId());
+        Assert.assertEquals(TestData.SIMPLE_ENTITY_ID, (long) TestData.SIMPLE_ENTITY_WITH_ID.getId());
+    }
+
+    @Test
+    public void testIsTrue() {
+        final List<SimpleTestEntity> list = mDatabase.simpleEntities().find()
+                .where(F.simpletestentity.enabled).isTrue()
+                .getList().now();
+
+        Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
+        for (SimpleTestEntity entity : list) {
+            Assert.assertTrue(entity.isEnabled());
+        }
+    }
+
+    @Test
+    public void testIsBooleanEqual() {
+        final List<SimpleTestEntity> list = mDatabase.simpleEntities().find()
+                .where(F.simpletestentity.enabled).isEqualTo(true)
+                .getList().now();
+
+        Assert.assertNotNull(list);
+        Assert.assertFalse(list.isEmpty());
+        for (SimpleTestEntity entity : list) {
+            Assert.assertTrue(entity.isEnabled());
+        }
     }
 
     @Test
     public void testMappingTriggers() {
 
         final ComplexEntity entity = mDatabase.complexEntities().find()
-                .where(F.complexentity.id).isEqualTo(ENTITY_WITH_CHILDREN_B.getId())
+                .where(F.complexentity.id).isEqualTo(TestData.ENTITY_WITH_CHILDREN_B.getId())
                 .getFirst().now();
 
-        final ParentTestEntity childEntity = ENTITY_WITH_CHILDREN_B.getEntities().get(0);
+        final ParentTestEntity childEntity = TestData.ENTITY_WITH_CHILDREN_B.getEntities().get(0);
         mDatabase.parentEntities().remove()
                 .entity(childEntity)
-                .commit();
+                .commit().now();
 
         final ComplexEntity entityAfterRemove = mDatabase.complexEntities().find()
-                .where(F.complexentity.id).isEqualTo(ENTITY_WITH_CHILDREN_B.getId())
+                .where(F.complexentity.id).isEqualTo(TestData.ENTITY_WITH_CHILDREN_B.getId())
                 .getFirst().now();
 
         mDatabase.parentEntities().save()
                 .entity(childEntity)
-                .commit();
+                .commit().now();
 
         final ComplexEntity entityAfterSave = mDatabase.complexEntities().find()
-                .where(F.complexentity.id).isEqualTo(ENTITY_WITH_CHILDREN_B.getId())
+                .where(F.complexentity.id).isEqualTo(TestData.ENTITY_WITH_CHILDREN_B.getId())
                 .getFirst().now();
 
         Assert.assertEquals(2, entity.getEntities().size());

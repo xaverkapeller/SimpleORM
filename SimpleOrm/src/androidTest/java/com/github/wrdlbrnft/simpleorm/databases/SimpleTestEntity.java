@@ -17,4 +17,8 @@ public interface SimpleTestEntity {
 
     @Column("text")
     String getText();
+
+    @Column("enabled")
+    boolean isEnabled();
+    void setEnabled(boolean value);
 }
