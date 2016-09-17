@@ -1,0 +1,24 @@
+{
+  "package": {
+    "name": "SimpleOrmProcessor",
+    "repo": "maven",
+    "desc": "The next generation ORM for Android",
+    "website_url": "https://wrdlbrnft.github.io/SimpleORM/",
+    "vcs_url": "https://github.com/Wrdlbrnft/SimpleORM",
+    "licenses": [
+      "MIT"
+    ],
+    "public_download_numbers": true,
+    "public_stats": true
+  },
+  "version": {
+    "name": "$[versionName]$",
+    "released": "$[releaseDate]$"
+  },
+  "files": [
+    {
+      "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor.jar"
+    }
+  ],
+  "publish": true
+}

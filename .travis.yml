@@ -24,5 +24,14 @@ before_script:
 script:
   - ./gradlew clean build connectedAndroidTest
 
-#after_success:
-#  - ./gradlew bintrayUpload -Pbintray_user=$BINTRAY_USER -Pbintray_api_key=$BINTRAY_API_KEY -Pversion_name=0.2.0.$TRAVIS_BUILD_NUMBER
+deploy:
+  - provider: bintray
+    file: "library-deploy.json"
+    user: $BINTRAY_USER
+    key: $BINTRAY_API_KEY
+    dry-run: true
+  - provider: bintray
+    file: "processor-deploy.json"
+    user: $BINTRAY_USER
+    key: $BINTRAY_API_KEY
+    dry-run: true

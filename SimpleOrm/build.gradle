@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.neenbedankt.android-apt'
 
 android {
     compileSdkVersion 24
@@ -14,13 +15,20 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    sourceSets {
+        main{
+            java {
+                srcDirs('../SimpleOrmApi/src/main/java')
+            }
+        }
+    }
 }
 
 dependencies {
-    compile project(path: ':SimpleOrmApi')
     compile 'net.zetetic:android-database-sqlcipher:3.5.1'
     compile 'com.android.support:support-annotations:24.2.0'
-    androidTestCompile 'com.android.support.test:runner:0.5'
+
     androidTestCompile 'junit:junit:4.12'
-    androidTestCompile project(':SimpleOrmProcessor')
+    androidTestCompile 'com.android.support.test:runner:0.5'
+    androidTestApt project(':SimpleOrmProcessor')
 }
