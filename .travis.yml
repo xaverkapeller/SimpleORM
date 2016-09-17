@@ -29,9 +29,7 @@ deploy:
     file: "library-deploy.json"
     user: $BINTRAY_USER
     key: $BINTRAY_API_KEY
-    dry-run: true
   - provider: bintray
     file: "processor-deploy.json"
     user: $BINTRAY_USER
     key: $BINTRAY_API_KEY
-    dry-run: true
