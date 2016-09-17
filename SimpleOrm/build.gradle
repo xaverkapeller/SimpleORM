@@ -24,6 +24,11 @@ android {
     }
 }
 
+tasks.findByName('build').dependsOn task(sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+})
+
 dependencies {
     compile 'net.zetetic:android-database-sqlcipher:3.5.1'
     compile 'com.android.support:support-annotations:24.2.0'

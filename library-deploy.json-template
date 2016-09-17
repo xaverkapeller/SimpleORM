@@ -18,6 +18,9 @@
   "files": [
     {
       "includePattern": "SimpleOrm/build/outputs/aar/SimpleOrm-release.aar"
+    },
+    {
+      "includePattern": "SimpleOrm/build/libs/SimpleOrm-sources.jar"
     }
   ],
   "publish": true

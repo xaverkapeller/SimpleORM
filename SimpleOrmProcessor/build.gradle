@@ -11,6 +11,11 @@ sourceSets {
     }
 }
 
+tasks.findByName('build').dependsOn task(sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+})
+
 dependencies {
     compile 'com.github.wrdlbrnft:code-builder:0.2.0.10'
 }

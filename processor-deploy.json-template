@@ -18,6 +18,9 @@
   "files": [
     {
       "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor.jar"
+    },
+    {
+      "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor-sources.jar"
     }
   ],
   "publish": true
