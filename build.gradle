@@ -9,7 +9,7 @@ buildscript {
 }
 
 plugins {
-    id "com.github.wrdlbrnft.json-generator" version "0.1.0.3"
+    id "com.github.wrdlbrnft.json-generator" version "0.1.0.4"
 }
 
 allprojects {
