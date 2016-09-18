@@ -30,12 +30,12 @@ jsonGenerator {
     library_deploy {
         template file('library-deploy.json-template')
         output file('library-deploy.json')
-        variables versionName: travisVersionName, bintrayUser: travisBintrayUser, releaseDate: new Date()
+        variables versionName: travisVersionName, bintrayUser: travisBintrayUser, releaseDate: new Date().format('yyyy-MM-dd')
     }
 
     processor_deploy {
         template file('processor-deploy.json-template')
         output file('processor-deploy.json')
-        variables versionName: travisVersionName, bintrayUser: travisBintrayUser, releaseDate: new Date()
+        variables versionName: travisVersionName, bintrayUser: travisBintrayUser, releaseDate: new Date().format('yyyy-MM-dd')
     }
 }
