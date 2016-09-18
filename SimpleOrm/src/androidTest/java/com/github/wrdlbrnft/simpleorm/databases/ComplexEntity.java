@@ -27,4 +27,7 @@ public interface ComplexEntity {
 
     @Column("entities")
     List<ParentTestEntity> getEntities();
+
+    @Column("child")
+    ChildTestEntity getChild();
 }

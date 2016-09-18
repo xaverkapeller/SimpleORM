@@ -1,5 +1,6 @@
 package com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager;
 
+import com.github.wrdlbrnft.codebuilder.arrays.ArrayUtils;
 import com.github.wrdlbrnft.codebuilder.code.Block;
 import com.github.wrdlbrnft.codebuilder.code.BlockWriter;
 import com.github.wrdlbrnft.codebuilder.code.CodeElement;
@@ -28,10 +29,16 @@ import java.util.Map;
 
 import javax.lang.model.element.Modifier;
 
+import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_BUILD;
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_CONVERT_FROM;
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_ENTITIES_TO_SAVE;
+import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_EXEC_SQL;
+import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_GET_SELECTION;
+import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_GET_SELECTION_ARGS;
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_INSERT;
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_PUT;
+import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_STATEMENT;
+import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_VALUE_OF;
 import static com.github.wrdlbrnft.simpleorm.processor.builder.entitymanager.EntityManagerBuilder.METHOD_VERIFY_ID;
 
 /**
@@ -44,13 +51,15 @@ class PerformSaveExecutableBuilder extends ExecutableBuilder {
 
     private final EntityInfo mEntityInfo;
     private final Map<TypeAdapterInfo, Field> mAdapterFieldMap;
+    private final Method mCreateRemoveQuery;
 
     private Variable mWritableSQLiteWrapper;
     private Variable mSaveParameters;
 
-    PerformSaveExecutableBuilder(EntityInfo entityInfo, Map<TypeAdapterInfo, Field> adapterFieldMap) {
+    PerformSaveExecutableBuilder(EntityInfo entityInfo, Map<TypeAdapterInfo, Field> adapterFieldMap, Method createRemoveQuery) {
         mEntityInfo = entityInfo;
         mAdapterFieldMap = adapterFieldMap;
+        mCreateRemoveQuery = createRemoveQuery;
     }
 
     @Override
@@ -73,10 +82,10 @@ class PerformSaveExecutableBuilder extends ExecutableBuilder {
                 .setIteration(new Foreach.Iteration() {
                     @Override
                     public void onIteration(Block block, Variable entity) {
-                        appendSave(block, null, null, null, mEntityInfo, entity);
+                        appendSave(block, null, null, null, null, null, mEntityInfo, entity);
                     }
 
-                    private void appendSave(Block block, EntityInfo parent, ColumnInfo parentColumn, Variable parentId, final EntityInfo child, Variable entity) {
+                    private void appendSave(Block block, EntityInfo parent, ColumnInfo parentColumn, Variable parentId, final Variable removeMappingSelection, Variable removeMappingparentId, final EntityInfo child, Variable entity) {
                         block.append(new If.Builder()
                                 .add(Operators.operate(entity, "==", Values.ofNull()), new BlockWriter() {
                                     @Override
@@ -110,6 +119,20 @@ class PerformSaveExecutableBuilder extends ExecutableBuilder {
                             block.newLine().append(Methods.from(idColumn.getSetterElement()).callOnTarget(entity, id)).append(";");
                         }
 
+                        if (removeMappingparentId != null) {
+                            block.newLine().append(METHOD_EXEC_SQL.callOnTarget(mWritableSQLiteWrapper,
+                                    Values.of("DELETE FROM " + MappingTables.getTableName(parent, parentColumn) + " WHERE " + MappingTables.COLUMN_PARENT_ID + "=? AND " + MappingTables.COLUMN_CHILD_ID + "=?"),
+                                    ArrayUtils.of(Types.STRING,
+                                            METHOD_VALUE_OF.callOnTarget(Types.STRING, parentId),
+                                            METHOD_VALUE_OF.callOnTarget(Types.STRING, id)
+                                    )
+                            )).append(";");
+                        }
+
+                        if (removeMappingSelection != null) {
+                            block.newLine().append(METHOD_STATEMENT.callOnTarget(removeMappingSelection, Values.of(MappingTables.COLUMN_CHILD_ID), Values.of("<>"), METHOD_VALUE_OF.callOnTarget(Types.STRING, id))).append(";");
+                        }
+
                         if (parent != null) {
                             block.newLine().newLine();
                             final Variable mappingValues = MappingTables.appendContentValuesForMapping(block, parentId, id);
@@ -133,7 +156,7 @@ class PerformSaveExecutableBuilder extends ExecutableBuilder {
                                         .add(Operators.operate(childEntity, "!=", Values.ofNull()), new BlockWriter() {
                                             @Override
                                             protected void write(Block block) {
-                                                appendSave(block, child, entityColumn, id, childEntityInfo, childEntity);
+                                                appendSave(block, child, entityColumn, id, null, id, childEntityInfo, childEntity);
                                             }
                                         })
                                         .build());
@@ -148,18 +171,31 @@ class PerformSaveExecutableBuilder extends ExecutableBuilder {
                                             }
                                         })
                                         .build()).newLine();
+                                final Variable selectionBuilder = Variables.of(SimpleOrmTypes.SELECTION_BUILDER, Modifier.FINAL);
+                                block.set(selectionBuilder, SimpleOrmTypes.SELECTION_BUILDER.newInstance()).append(";").newLine();
+                                block.append(METHOD_STATEMENT.callOnTarget(selectionBuilder, Values.of(MappingTables.COLUMN_PARENT_ID), Values.of("="), METHOD_VALUE_OF.callOnTarget(Types.STRING, id))).append(";").newLine();
                                 block.append(new Foreach.Builder()
                                         .setItemType(childEntityType)
                                         .setCollection(childEntityList)
                                         .setIteration(new Foreach.Iteration() {
                                             @Override
                                             public void onIteration(Block block, Variable childEntity) {
-                                                appendSave(block, child, entityColumn, id, childEntityInfo, childEntity);
+                                                appendSave(block, child, entityColumn, id, selectionBuilder, null, childEntityInfo, childEntity);
                                             }
                                         })
                                         .build());
+                                block.newLine();
+                                final Variable selection = Variables.of(SimpleOrmTypes.SELECTION, Modifier.FINAL);
+                                block.set(selection, METHOD_BUILD.callOnTarget(selectionBuilder)).append(";").newLine();
+                                block.append(METHOD_EXEC_SQL.callOnTarget(mWritableSQLiteWrapper,
+                                        mCreateRemoveQuery.call(
+                                                Values.of("DELETE FROM " + MappingTables.getTableName(child, entityColumn)),
+                                                METHOD_GET_SELECTION.callOnTarget(selection, Values.ofNull())
+                                        ),
+                                        METHOD_GET_SELECTION_ARGS.callOnTarget(selection)
+                                )).append(";");
                             } else {
-                                throw new IllegalStateException("Encountered unkown collection type: " + collectionType);
+                                throw new IllegalStateException("Encountered unknown collection type: " + collectionType);
                             }
                         }
                     }

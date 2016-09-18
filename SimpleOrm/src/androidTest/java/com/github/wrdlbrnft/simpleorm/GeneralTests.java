@@ -37,6 +37,9 @@ public class GeneralTests {
                 .entity(TestData.ENTITY_WITH_CHILDREN_A)
                 .entity(TestData.ENTITY_WITH_CHILDREN_B)
                 .commit().now();
+        mDatabase.parentEntities().save()
+                .entity(TestData.PARENT_A)
+                .commit().now();
         mDatabase.simpleEntities().save()
                 .entity(TestData.SIMPLE_ENTITY)
                 .commit().now();
@@ -221,5 +224,25 @@ public class GeneralTests {
         Assert.assertEquals(2, entity.getEntities().size());
         Assert.assertEquals(1, entityAfterRemove.getEntities().size());
         Assert.assertEquals(1, entityAfterSave.getEntities().size());
+    }
+
+    @Test
+    public void testMappingUpdates() {
+        final ParentTestEntity entity = mDatabase.parentEntities().find()
+                .where(F.parenttestentity.id).isEqualTo(TestData.PARENT_A.getId())
+                .getFirst().now();
+
+        entity.getChildren().remove(0);
+        entity.getChildren().add(TestData.CHILD_C);
+
+        mDatabase.parentEntities().save()
+                .entity(entity)
+                .commit().now();
+
+        final ParentTestEntity afterUpdate = mDatabase.parentEntities().find()
+                .where(F.parenttestentity.id).isEqualTo(TestData.PARENT_A.getId())
+                .getFirst().now();
+
+        Assert.assertEquals(entity, afterUpdate);
     }
 }

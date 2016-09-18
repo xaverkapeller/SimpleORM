@@ -1,7 +1,6 @@
 package com.github.wrdlbrnft.simpleorm.processor;
 
 import com.github.wrdlbrnft.codebuilder.types.DefinedType;
-import com.github.wrdlbrnft.codebuilder.types.Type;
 import com.github.wrdlbrnft.codebuilder.types.Types;
 
 /**
@@ -18,6 +17,8 @@ public class SimpleOrmTypes {
 
     public static final DefinedType STRING_BUILDER = Types.of(StringBuilder.class);
     public static final DefinedType COLLECTIONS = Types.of("java.util", "Collections");
+    public static final DefinedType LONG_SET = Types.of("com.github.wrdlbrnft.simpleorm.utils", "LongSet");
+    public static final DefinedType CONCURRENT_SUPPLIER = Types.of("com.github.wrdlbrnft.simpleorm.utils", "ConcurrentSupplier");
     public static final DefinedType LONG_SPARSE_ARRAY_COMPAT = Types.of("com.github.wrdlbrnft.simpleorm.utils", "LongSparseArrayCompat");
 
     public static final DefinedType EXECUTOR = Types.of("java.util.concurrent", "Executor");

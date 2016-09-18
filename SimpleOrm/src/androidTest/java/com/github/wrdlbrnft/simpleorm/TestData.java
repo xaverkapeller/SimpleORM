@@ -1,12 +1,15 @@
 package com.github.wrdlbrnft.simpleorm;
 
+import com.github.wrdlbrnft.simpleorm.databases.ChildTestEntity;
 import com.github.wrdlbrnft.simpleorm.databases.ChildTestEntityBuilder;
 import com.github.wrdlbrnft.simpleorm.databases.ComplexEntity;
 import com.github.wrdlbrnft.simpleorm.databases.ComplexEntityBuilder;
+import com.github.wrdlbrnft.simpleorm.databases.ParentTestEntity;
 import com.github.wrdlbrnft.simpleorm.databases.ParentTestEntityBuilder;
 import com.github.wrdlbrnft.simpleorm.databases.SimpleTestEntity;
 import com.github.wrdlbrnft.simpleorm.databases.SimpleTestEntityBuilder;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -103,5 +106,24 @@ public class TestData {
             .setId(SIMPLE_ENTITY_ID)
             .setText("qwerty")
             .setEnabled(true)
+            .build();
+
+    public static final ChildTestEntity CHILD_A = new ChildTestEntityBuilder()
+            .setValue(123.0)
+            .setText("aaa")
+            .build();
+
+    public static final ChildTestEntity CHILD_B = new ChildTestEntityBuilder()
+            .setValue(312.0)
+            .setText("bbb")
+            .build();
+
+    public static final ChildTestEntity CHILD_C = new ChildTestEntityBuilder()
+            .setValue(231.0)
+            .setText("ccc")
+            .build();
+
+    public static final ParentTestEntity PARENT_A = new ParentTestEntityBuilder()
+            .setChildren(new ArrayList<>(Arrays.asList(CHILD_A, CHILD_B)))
             .build();
 }

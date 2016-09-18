@@ -55,6 +55,8 @@ public class EntityManagerBuilder {
     static final Method METHOD_PUT = Methods.stub("put");
     static final Method METHOD_INSERT = Methods.stub("insert");
     static final Method METHOD_QUERY = Methods.stub("query");
+    static final Method METHOD_SIZE = Methods.stub("size");
+    static final Method METHOD_GET = Methods.stub("get");
     static final Method METHOD_GET_SELECTION = Methods.stub("getSelection");
     static final Method METHOD_GET_SELECTION_ARGS = Methods.stub("getSelectionArgs");
     static final Method METHOD_GET_ORDER_BY = Methods.stub("getOrderBy");
@@ -188,7 +190,7 @@ public class EntityManagerBuilder {
                 .setName("performSave")
                 .setModifiers(EnumSet.of(Modifier.PROTECTED))
                 .addAnnotation(Annotations.forType(Override.class))
-                .setCode(new PerformSaveExecutableBuilder(info, adapterFieldMap))
+                .setCode(new PerformSaveExecutableBuilder(info, adapterFieldMap, createRemoveQuery))
                 .build());
 
         builder.addMethod(new Method.Builder()
