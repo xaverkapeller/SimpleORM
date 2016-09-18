@@ -1,5 +1,5 @@
 plugins {
-    id "com.github.wrdlbrnft.pom-generator" version "0.1.0.1"
+    id "com.github.wrdlbrnft.pom-generator" version "0.1.0.2"
 }
 
 apply plugin: 'java'

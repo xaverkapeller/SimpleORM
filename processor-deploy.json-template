@@ -18,16 +18,16 @@
   },
   "files": [
     {
-      "includePattern": "SimpleOrmProcessor/pom.xml",
-      "uploadPattern": "com/github/wrdlbrnft/simple-orm-processor/$[versionName]$/pom.xml"
+      "includePattern": "SimpleOrmProcessor/simple-orm-processor-$[versionName]$.pom",
+      "uploadPattern": "com/github/wrdlbrnft/simple-orm-processor/$[versionName]$/simple-orm-processor-$[versionName]$.pom"
     },
     {
       "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor.jar",
-      "uploadPattern": "com/github/wrdlbrnft/simple-orm-processor/$[versionName]$/SimpleOrmProcessor.jar"
+      "uploadPattern": "com/github/wrdlbrnft/simple-orm-processor/$[versionName]$/simple-orm-processor-$[versionName]$.jar"
     },
     {
       "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor-sources.jar",
-      "uploadPattern": "com/github/wrdlbrnft/simple-orm-processor/$[versionName]$/SimpleOrmProcessor-sources.jar"
+      "uploadPattern": "com/github/wrdlbrnft/simple-orm-processor/$[versionName]$/simple-orm-processor-$[versionName]$-sources.jar"
     }
   ],
   "publish": true

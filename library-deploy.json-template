@@ -18,16 +18,16 @@
   },
   "files": [
     {
-      "includePattern": "SimpleOrm/pom.xml",
-      "uploadPattern": "com/github/wrdlbrnft/simple-orm/$[versionName]$/pom.xml"
+      "includePattern": "SimpleOrm/simple-orm-$[versionName]$.pom",
+      "uploadPattern": "com/github/wrdlbrnft/simple-orm/$[versionName]$/simple-orm-$[versionName]$.pom"
     },
     {
       "includePattern": "SimpleOrm/build/outputs/aar/SimpleOrm-release.aar",
-      "uploadPattern": "com/github/wrdlbrnft/simple-orm/$[versionName]$/SimpleOrm.aar"
+      "uploadPattern": "com/github/wrdlbrnft/simple-orm/$[versionName]$/simple-orm-$[versionName]$.aar"
     },
     {
       "includePattern": "SimpleOrm/build/libs/SimpleOrm-sources.jar",
-      "uploadPattern": "com/github/wrdlbrnft/simple-orm/$[versionName]$/SimpleOrm-sources.jar"
+      "uploadPattern": "com/github/wrdlbrnft/simple-orm/$[versionName]$/simple-orm-$[versionName]$-sources.jar"
     }
   ],
   "publish": true
