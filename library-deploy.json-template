@@ -19,15 +19,15 @@
   "files": [
     {
       "includePattern": "SimpleOrm/pom.xml",
-      "uploadPattern": "pom.xml"
+      "uploadPattern": "com/github/wrdlbrnft/simple-orm/$[versionName]$/pom.xml"
     },
     {
       "includePattern": "SimpleOrm/build/outputs/aar/SimpleOrm-release.aar",
-      "uploadPattern": "SimpleOrm.aar"
+      "uploadPattern": "com/github/wrdlbrnft/simple-orm/$[versionName]$/SimpleOrm.aar"
     },
     {
       "includePattern": "SimpleOrm/build/libs/SimpleOrm-sources.jar",
-      "uploadPattern": "SimpleOrm-sources.jar"
+      "uploadPattern": "com/github/wrdlbrnft/simple-orm/$[versionName]$/SimpleOrm-sources.jar"
     }
   ],
   "publish": true
