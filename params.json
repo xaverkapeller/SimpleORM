@@ -1,5 +1,5 @@
 {
-  "name": "Simpleorm",
+  "name": "SimpleORM",
   "tagline": "The next generation ORM for Android",
   "body": " - **No slow reflection**: SimpleORM uses compile time code generation to ensure high performance\r\n - **Simple and expressive API**: With just two interfaces and a few interfaces you can set everything up! SimpleORM takes care of all the hard work so you can focus on the content you want to save.\r\n - **Interface based Entities**: SimpleORM works exclusively with interfaces, therefor ensuring high flexibility while at the same time reducing code complexity.\r\n - **Supports disk encryption**: SimpleORM can encrypt the database using 256 bit AES encryption. The user can unlock the database with a password or her fingerprint! \r\n\r\nProject is currently under active development and **not intended to be used in production**.\r\n\r\n[![Build Status](https://travis-ci.org/Wrdlbrnft/SimpleORM.svg?branch=master)](https://travis-ci.org/Wrdlbrnft/SimpleORM)\r\n\r\n\r\n",
   "note": "Don't delete this file! It's used internally to help with page regeneration."
