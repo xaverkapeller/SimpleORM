@@ -18,6 +18,10 @@
   },
   "files": [
     {
+      "includePattern": "SimpleOrm/pom.xml",
+      "uploadPattern": "pom.xml"
+    },
+    {
       "includePattern": "SimpleOrm/build/outputs/aar/SimpleOrm-release.aar",
       "uploadPattern": "SimpleOrm.aar"
     },

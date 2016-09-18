@@ -1,4 +1,10 @@
+plugins {
+    id "com.github.wrdlbrnft.pom-generator" version "0.1.0.1"
+}
+
 apply plugin: 'java'
+
+final travisVersionName = hasProperty('version_name') ? property('version_name') : '0.1.0.0'
 
 targetCompatibility = '1.7'
 sourceCompatibility = '1.7'
@@ -18,4 +24,10 @@ tasks.findByName('build').dependsOn task(sourcesJar(type: Jar, dependsOn: classe
 
 dependencies {
     compile 'com.github.wrdlbrnft:code-builder:0.2.0.10'
+}
+
+pomGenerator {
+    groupId 'com.github.wrdlbrnft'
+    artifactId 'simple-orm-processor'
+    versionName travisVersionName
 }

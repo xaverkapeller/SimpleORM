@@ -18,6 +18,10 @@
   },
   "files": [
     {
+      "includePattern": "SimpleOrmProcessor/pom.xml",
+      "uploadPattern": "pom.xml"
+    },
+    {
       "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor.jar",
       "uploadPattern": "SimpleOrmProcessor.jar"
     },
