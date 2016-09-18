@@ -18,10 +18,12 @@
   },
   "files": [
     {
-      "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor.jar"
+      "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor.jar",
+      "uploadPattern": "SimpleOrmProcessor.jar"
     },
     {
-      "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor-sources.jar"
+      "includePattern": "SimpleOrmProcessor/build/libs/SimpleOrmProcessor-sources.jar",
+      "uploadPattern": "SimpleOrmProcessor-sources.jar"
     }
   ],
   "publish": true

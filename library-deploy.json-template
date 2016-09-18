@@ -18,10 +18,12 @@
   },
   "files": [
     {
-      "includePattern": "SimpleOrm/build/outputs/aar/SimpleOrm-release.aar"
+      "includePattern": "SimpleOrm/build/outputs/aar/SimpleOrm-release.aar",
+      "uploadPattern": "SimpleOrm.aar"
     },
     {
-      "includePattern": "SimpleOrm/build/libs/SimpleOrm-sources.jar"
+      "includePattern": "SimpleOrm/build/libs/SimpleOrm-sources.jar",
+      "uploadPattern": "SimpleOrm-sources.jar"
     }
   ],
   "publish": true
