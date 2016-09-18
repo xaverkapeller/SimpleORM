@@ -2,6 +2,7 @@
   "package": {
     "name": "SimpleOrm",
     "repo": "maven",
+    "subject": "$[bintrayUser]$",
     "desc": "The next generation ORM for Android",
     "website_url": "https://wrdlbrnft.github.io/SimpleORM/",
     "vcs_url": "https://github.com/Wrdlbrnft/SimpleORM",

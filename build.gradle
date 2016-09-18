@@ -23,18 +23,19 @@ task clean(type: Delete) {
 }
 
 final travisVersionName = hasProperty('version_name') ? property('version_name') : '0.1.0.0'
+final travisBintrayUser = hasProperty('bintray_user') ? property('bintray_user') : ''
 
 jsonGenerator {
 
     library_deploy {
         template file('library-deploy.json-template')
         output file('library-deploy.json')
-        variables versionName: travisVersionName, releaseDate: new Date()
+        variables versionName: travisVersionName, bintrayUser: travisBintrayUser, releaseDate: new Date()
     }
 
     processor_deploy {
         template file('processor-deploy.json-template')
         output file('processor-deploy.json')
-        variables versionName: travisVersionName, releaseDate: new Date()
+        variables versionName: travisVersionName, bintrayUser: travisBintrayUser, releaseDate: new Date()
     }
 }
