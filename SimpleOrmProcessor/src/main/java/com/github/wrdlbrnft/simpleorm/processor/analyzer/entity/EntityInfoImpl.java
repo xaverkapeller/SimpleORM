@@ -15,12 +15,14 @@ class EntityInfoImpl implements EntityInfo {
     private final TypeElement mEntityElement;
     private final ColumnInfo mIdColumn;
     private final List<ColumnInfo> mContentColumns;
+    private final VersionInfo mVersionInfo;
 
-    public EntityInfoImpl(String tableName, TypeElement entityElement, ColumnInfo idColumn, List<ColumnInfo> contentColumns) {
+    public EntityInfoImpl(String tableName, TypeElement entityElement, ColumnInfo idColumn, List<ColumnInfo> contentColumns, VersionInfo versionInfo) {
         mTableName = tableName;
         mEntityElement = entityElement;
         mIdColumn = idColumn;
         mContentColumns = contentColumns;
+        mVersionInfo = versionInfo;
     }
 
     @Override
@@ -41,5 +43,10 @@ class EntityInfoImpl implements EntityInfo {
     @Override
     public List<ColumnInfo> getColumns() {
         return mContentColumns;
+    }
+
+    @Override
+    public VersionInfo getVersionInfo() {
+        return mVersionInfo;
     }
 }

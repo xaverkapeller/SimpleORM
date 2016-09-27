@@ -10,6 +10,7 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnInfo;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.ColumnType;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.Constraint;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.EntityInfo;
+import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.VersionInfo;
 import com.github.wrdlbrnft.simpleorm.processor.utils.MappingTables;
 
 import java.util.ArrayList;
@@ -52,8 +53,9 @@ class QueryFactory {
         boolean appendSeparator = false;
         for (ColumnInfo column : entityInfo.getColumns()) {
             if (column.getColumnType() == ColumnType.ENTITY) {
-                tableQueries.add(new QueryImpl(MappingTables.createMappingTableStatement(entityInfo, column)));
-                triggerQueries.add(new QueryImpl(MappingTables.createMappingTableTriggerStatement(entityInfo, column)));
+                final VersionInfo columnVersionInfo = column.getVersionInfo();
+                tableQueries.add(new QueryImpl(MappingTables.createMappingTableStatement(entityInfo, column), columnVersionInfo));
+                triggerQueries.add(new QueryImpl(MappingTables.createMappingTableTriggerStatement(entityInfo, column), columnVersionInfo));
                 continue;
             }
 
@@ -66,7 +68,7 @@ class QueryFactory {
         }
 
         builder.append(");");
-        tableQueries.add(new QueryImpl(builder.toString()));
+        tableQueries.add(new QueryImpl(builder.toString(), entityInfo.getVersionInfo()));
         return new CreateQueriesImpl(tableQueries, triggerQueries);
     }
 
@@ -81,14 +83,21 @@ class QueryFactory {
     private static class QueryImpl implements Query {
 
         private final String mQueryString;
+        private final VersionInfo mVersionInfo;
 
-        private QueryImpl(String queryString) {
+        private QueryImpl(String queryString, VersionInfo versionInfo) {
             mQueryString = queryString;
+            mVersionInfo = versionInfo;
         }
 
         @Override
         public CodeElement execute(Variable manager) {
             return METHOD_EXEC_SQL.callOnTarget(manager, Values.of(mQueryString));
+        }
+
+        @Override
+        public VersionInfo getVersionInfo() {
+            return mVersionInfo;
         }
     }
 

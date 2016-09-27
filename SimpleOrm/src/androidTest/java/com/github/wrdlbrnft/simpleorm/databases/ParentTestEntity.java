@@ -1,5 +1,6 @@
 package com.github.wrdlbrnft.simpleorm.databases;
 
+import com.github.wrdlbrnft.simpleorm.annotations.AddedInVersion;
 import com.github.wrdlbrnft.simpleorm.annotations.Column;
 import com.github.wrdlbrnft.simpleorm.annotations.Entity;
 import com.github.wrdlbrnft.simpleorm.annotations.Id;
@@ -20,5 +21,6 @@ public interface ParentTestEntity {
     void setId(Long id);
 
     @Column("children")
+    @AddedInVersion(3)
     List<ChildTestEntity> getChildren();
 }

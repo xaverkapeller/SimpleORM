@@ -9,7 +9,7 @@ import com.github.wrdlbrnft.simpleorm.annotations.Database;
  * Date: 07/09/16
  */
 
-@Database(name = "TestDb2", version = 1, encrypted = true)
+@Database(name = "TestDb2", version = 4, encrypted = true)
 public interface TestDatabase {
     Repository<ComplexEntity> complexEntities();
     Repository<SimpleTestEntity> simpleEntities();

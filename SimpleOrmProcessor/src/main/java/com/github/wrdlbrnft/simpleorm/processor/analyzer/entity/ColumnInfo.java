@@ -31,6 +31,7 @@ public interface ColumnInfo {
     CollectionType getCollectionType();
     String getColumnName();
     String getIdentifier();
+    VersionInfo getVersionInfo();
     ExecutableElement getGetterElement();
     ExecutableElement getSetterElement();
 }

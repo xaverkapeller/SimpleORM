@@ -1,18 +1,14 @@
 package com.github.wrdlbrnft.simpleorm.processor.analyzer.entity;
 
 import com.github.wrdlbrnft.codebuilder.util.ProcessingHelper;
-import com.github.wrdlbrnft.simpleorm.annotations.AutoIncrement;
-import com.github.wrdlbrnft.simpleorm.annotations.Column;
+import com.github.wrdlbrnft.simpleorm.annotations.AddedInVersion;
 import com.github.wrdlbrnft.simpleorm.annotations.Entity;
-import com.github.wrdlbrnft.simpleorm.annotations.Id;
-import com.github.wrdlbrnft.simpleorm.annotations.Unique;
+import com.github.wrdlbrnft.simpleorm.annotations.RemovedInVersion;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.GetterWithParametersException;
-import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.InconsistentColumnAnnotationException;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.InconsistentGetterSetterTypeException;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.InvalidEntityException;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.InvalidIdColumnException;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.InvalidMethodNameException;
-import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.MissingColumnAnnotationException;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.MissingIdAnnotationException;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.MultipleGetterException;
 import com.github.wrdlbrnft.simpleorm.processor.analyzer.entity.exceptions.MultipleIdColumnsException;
@@ -23,10 +19,8 @@ import com.github.wrdlbrnft.simpleorm.processor.analyzer.typeadapter.TypeAdapter
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
@@ -44,8 +38,6 @@ import javax.lang.model.type.TypeMirror;
  * Date: 03/07/16
  */
 public class EntityAnalyzer {
-
-    private static final String DEFAULT_ID_COLUMN_NAME = "_id";
     private final Map<String, EntityInfo> mCache = new HashMap<>();
 
     private final ProcessingEnvironment mProcessingEnvironment;
@@ -75,7 +67,7 @@ public class EntityAnalyzer {
         ColumnInfo idColumn = null;
         final List<ColumnInfo> columns = new ArrayList<>();
         for (GetterSetterPair pair : getterSetterMap.values()) {
-            final ColumnInfo columnInfo = createColumnInfo(pair, adapterManager);
+            final ColumnInfo columnInfo = pair.createColumnInfo(mProcessingEnvironment, this, adapterManager);
             if (pair.getIdAnnotation() != null) {
                 if (idColumn != null) {
                     throw new MultipleIdColumnsException("The entity " + entity.getSimpleName() + " has more than one Id columns.", entity);
@@ -99,7 +91,12 @@ public class EntityAnalyzer {
             }
         }
 
-        final EntityInfo entityInfo = new EntityInfoImpl(tableName, entity, idColumn, Collections.unmodifiableList(columns));
+        final AddedInVersion addedAnnotation = entity.getAnnotation(AddedInVersion.class);
+        final RemovedInVersion removedAnnotation = entity.getAnnotation(RemovedInVersion.class);
+        final EntityInfo entityInfo = new EntityInfoImpl(tableName, entity, idColumn, Collections.unmodifiableList(columns), new VersionInfoImpl(
+                addedAnnotation != null ? addedAnnotation.value() : VersionInfo.NO_VERSION,
+                removedAnnotation != null ? removedAnnotation.value() : VersionInfo.NO_VERSION
+        ));
         wrapper.setEntityInfo(entityInfo);
         return entityInfo;
     }
@@ -116,7 +113,6 @@ public class EntityAnalyzer {
             }
 
             final ExecutableElement method = (ExecutableElement) member;
-            final Column columnAnnotation = method.getAnnotation(Column.class);
             final List<? extends VariableElement> parameters = method.getParameters();
 
             final String name = method.getSimpleName().toString();
@@ -147,16 +143,7 @@ public class EntityAnalyzer {
                 }
 
                 pair.setTypeAdapters(result.getAdapters());
-
-                if (columnAnnotation != null) {
-                    final Column existingAnnotation = pair.getColumnAnnotation();
-                    if (existingAnnotation != null && !equals(existingAnnotation.value(), columnAnnotation.value())) {
-                        throw new InconsistentColumnAnnotationException("The getter " + name + " and its setter have inconsistent column names.", method);
-                    }
-                    pair.setColumnAnnotation(columnAnnotation);
-                }
-
-                analyzeAnnotations(pair, method);
+                pair.updateAnnotations(method);
             } else if (name.startsWith("set")) {
                 final String key = name.substring(3);
                 final GetterSetterPair pair = getGetterSetterPair(pairMap, key);
@@ -184,16 +171,7 @@ public class EntityAnalyzer {
                 }
 
                 pair.setTypeAdapters(result.getAdapters());
-
-                if (columnAnnotation != null) {
-                    final Column existingAnnotation = pair.getColumnAnnotation();
-                    if (existingAnnotation != null && !equals(existingAnnotation.value(), columnAnnotation.value())) {
-                        throw new InconsistentColumnAnnotationException("The setter " + name + " and its getter have inconsistent column names. You only need to annotate one of them with @Column.", method);
-                    }
-                    pair.setColumnAnnotation(columnAnnotation);
-                }
-
-                analyzeAnnotations(pair, method);
+                pair.updateAnnotations(method);
             } else {
                 throw new InvalidMethodNameException(name + " is not a valid method name. It has to start with set for a setter or get/is for a getter", method);
             }
@@ -215,23 +193,6 @@ public class EntityAnalyzer {
         }
     }
 
-    private void analyzeAnnotations(GetterSetterPair pair, ExecutableElement method) {
-        final Id idAnnotation = method.getAnnotation(Id.class);
-        final AutoIncrement autoIncrementAnnotation = method.getAnnotation(AutoIncrement.class);
-        final Unique uniqueAnnotation = method.getAnnotation(Unique.class);
-        if (idAnnotation != null) {
-            pair.setIdAnnotation(idAnnotation);
-        }
-
-        if (autoIncrementAnnotation != null) {
-            pair.setAutoIncrementAnnotation(autoIncrementAnnotation);
-        }
-
-        if (uniqueAnnotation != null) {
-            pair.setUniqueAnnotation(uniqueAnnotation);
-        }
-    }
-
     private GetterSetterPair getGetterSetterPair(Map<String, GetterSetterPair> pairMap, String key) {
         if (pairMap.containsKey(key)) {
             return pairMap.get(key);
@@ -240,43 +201,6 @@ public class EntityAnalyzer {
         final GetterSetterPair pair = new GetterSetterPair(key);
         pairMap.put(key, pair);
         return pair;
-    }
-
-    private ColumnInfo createColumnInfo(GetterSetterPair pair, TypeAdapterManager adapterManager) {
-        final Column columnAnnotation = pair.getColumnAnnotation();
-        final Id idAnnotation = pair.getIdAnnotation();
-        final ExecutableElement setter = pair.getSetterMethod();
-        final ExecutableElement getter = pair.getGetterMethod();
-        final String columnName;
-        if (columnAnnotation != null) {
-            columnName = columnAnnotation.value();
-        } else if (idAnnotation != null) {
-            columnName = DEFAULT_ID_COLUMN_NAME;
-        } else {
-            final ExecutableElement method = getter != null ? getter : setter;
-            throw new MissingColumnAnnotationException("The @Column annotation is missing from the method " + method.getSimpleName() + ". You need to set the column name with @Column.", method);
-        }
-
-        final Set<Constraint> constraints = new HashSet<>();
-        if (pair.getIdAnnotation() != null) {
-            constraints.add(Constraint.PRIMARY_KEY);
-        }
-        if (pair.getAutoIncrementAnnotation() != null) {
-            constraints.add(Constraint.AUTO_INCREMENT);
-        }
-        if (pair.getUniqueAnnotation() != null) {
-            constraints.add(Constraint.UNIQUE);
-        }
-
-        final EntityInfo childEntityInfo = pair.getColumnType() == ColumnType.ENTITY
-                ? analyze((TypeElement) mProcessingEnvironment.getTypeUtils().asElement(pair.getTypeMirror()), adapterManager)
-                : null;
-
-        return new ColumnInfoImpl(pair.getColumnType(), pair.getTypeMirror(), constraints, columnName, pair.getTypeAdapters(), childEntityInfo, pair.getCollectionType(), pair.getIdentifier(), getter, setter);
-    }
-
-    private static boolean equals(Object a, Object b) {
-        return (a == b) || (a != null && a.equals(b));
     }
 
     private static class EntityInfoWrapper implements EntityInfo {
@@ -301,6 +225,11 @@ public class EntityAnalyzer {
         @Override
         public List<ColumnInfo> getColumns() {
             return mEntityInfo.getColumns();
+        }
+
+        @Override
+        public VersionInfo getVersionInfo() {
+            return mEntityInfo.getVersionInfo();
         }
 
         public void setEntityInfo(EntityInfo entityInfo) {

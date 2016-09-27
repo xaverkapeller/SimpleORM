@@ -1,5 +1,6 @@
 package com.github.wrdlbrnft.simpleorm.databases;
 
+import com.github.wrdlbrnft.simpleorm.annotations.AddedInVersion;
 import com.github.wrdlbrnft.simpleorm.annotations.Column;
 import com.github.wrdlbrnft.simpleorm.annotations.Entity;
 import com.github.wrdlbrnft.simpleorm.annotations.Id;
@@ -26,8 +27,10 @@ public interface ComplexEntity {
     long getValue();
 
     @Column("entities")
+    @AddedInVersion(2)
     List<ParentTestEntity> getEntities();
 
     @Column("child")
+    @AddedInVersion(4)
     ChildTestEntity getChild();
 }

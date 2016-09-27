@@ -28,8 +28,9 @@ class ColumnInfoImpl implements ColumnInfo {
     private final String mIdentifier;
     private final ExecutableElement mGetter;
     private final ExecutableElement mSetter;
+    private final VersionInfo mVersionInfo;
 
-    ColumnInfoImpl(ColumnType columnType, TypeMirror typeMirror, Set<Constraint> constraints, String columnName, List<TypeAdapterInfo> typeAdapters, EntityInfo childEntityInfo, CollectionType collectionType, String identifier, ExecutableElement getter, ExecutableElement setter) {
+    ColumnInfoImpl(ColumnType columnType, TypeMirror typeMirror, Set<Constraint> constraints, String columnName, List<TypeAdapterInfo> typeAdapters, EntityInfo childEntityInfo, CollectionType collectionType, String identifier, ExecutableElement getter, ExecutableElement setter, VersionInfo versionInfo) {
         mColumnType = columnType;
         mTypeMirror = typeMirror;
         mConstraints = Collections.unmodifiableSet(constraints);
@@ -40,6 +41,7 @@ class ColumnInfoImpl implements ColumnInfo {
         mIdentifier = identifier;
         mGetter = getter;
         mSetter = setter;
+        mVersionInfo = versionInfo;
     }
 
     @Override
@@ -70,6 +72,11 @@ class ColumnInfoImpl implements ColumnInfo {
     @Override
     public String getIdentifier() {
         return mIdentifier;
+    }
+
+    @Override
+    public VersionInfo getVersionInfo() {
+        return mVersionInfo;
     }
 
     @Override

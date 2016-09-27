@@ -15,4 +15,5 @@ public interface EntityInfo {
     TypeElement getEntityElement();
     ColumnInfo getIdColumn();
     List<ColumnInfo> getColumns();
+    VersionInfo getVersionInfo();
 }

@@ -1,5 +1,6 @@
 package com.github.wrdlbrnft.simpleorm.databases;
 
+import com.github.wrdlbrnft.simpleorm.annotations.AddedInVersion;
 import com.github.wrdlbrnft.simpleorm.annotations.Column;
 import com.github.wrdlbrnft.simpleorm.annotations.Entity;
 import com.github.wrdlbrnft.simpleorm.annotations.Id;
@@ -11,6 +12,7 @@ import com.github.wrdlbrnft.simpleorm.annotations.Id;
  */
 
 @Entity("child")
+@AddedInVersion(3)
 public interface ChildTestEntity {
 
     @Id

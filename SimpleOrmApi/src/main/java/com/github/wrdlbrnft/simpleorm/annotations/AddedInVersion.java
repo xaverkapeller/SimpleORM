@@ -12,6 +12,6 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.METHOD, ElementType.TYPE})
-public @interface Removed {
-    int inVersion();
+public @interface AddedInVersion {
+    int value();
 }
