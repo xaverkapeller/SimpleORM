@@ -2,6 +2,7 @@ package com.github.wrdlbrnft.simpleorm;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
+import android.util.Log;
 
 import com.github.wrdlbrnft.simpleorm.databases.ComplexEntity;
 import com.github.wrdlbrnft.simpleorm.databases.F;
@@ -9,6 +10,7 @@ import com.github.wrdlbrnft.simpleorm.databases.ParentTestEntity;
 import com.github.wrdlbrnft.simpleorm.databases.SimpleTestEntity;
 import com.github.wrdlbrnft.simpleorm.databases.TestDatabase;
 import com.github.wrdlbrnft.simpleorm.databases.TestDatabaseFactory;
+import com.github.wrdlbrnft.simpleorm.manager.DatabaseManager;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -20,17 +22,50 @@ import java.util.List;
 /**
  * Created with Android Studio
  * User: Xaver
- * Da te: 10/09/16
+ * Date: 10/09/16
  */
 
 public class GeneralTests {
+
+    private static final String TAG = "GeneralTests";
+
+    private static final DatabaseManager<TestDatabase> DATABASE_MANAGER = new DatabaseManager.Builder<TestDatabase>()
+            .setKeyName("SomeKeyName")
+            .setOpener(new DatabaseManager.DatabaseCreator<TestDatabase>() {
+                @Override
+                public TestDatabase open(Context context, char[] password) {
+                    return TestDatabaseFactory.newInstance(context, password);
+                }
+            })
+            .build();
 
     private TestDatabase mDatabase;
 
     @Before
     public void setUp() {
         final Context context = InstrumentationRegistry.getContext();
-        mDatabase = TestDatabaseFactory.newInstance(context, TestData.PASSWORD);
+        DATABASE_MANAGER.unlock(context).unlockWithPassword(new DatabaseManager.PasswordUnlockCallback() {
+            @Override
+            public void onUnlockSuccessful() {
+                Log.i(TAG, "Unlocking was successful.");
+            }
+
+            @Override
+            public void onPasswordRequired(DatabaseManager.PasswordRequest request) {
+                if (request.tryPassword(TestData.PASSWORD.toCharArray())) {
+                    Log.i(TAG, "Password is correct.");
+                } else {
+                    Log.i(TAG, "Password is incorrect.");
+                }
+            }
+        });
+
+        if (!DATABASE_MANAGER.isUnlocked()) {
+            throw new IllegalStateException("Unlocking the database failed.");
+        }
+
+        mDatabase = DATABASE_MANAGER.getUnlockedDatabase();
+
         mDatabase.complexEntities().save()
                 .entity(TestData.ENTITY_NO_CHILDREN)
                 .entity(TestData.ENTITY_NO_CHILDREN_ALTERNATIVE)

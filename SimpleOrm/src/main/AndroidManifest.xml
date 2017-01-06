@@ -1,1 +1,6 @@
-<manifest package="com.github.wrdlbrnft.com.github.wrdlbrnft.simpleorm" />
+<manifest package="com.github.wrdlbrnft.com.github.wrdlbrnft.simpleorm"
+          xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+
+</manifest>

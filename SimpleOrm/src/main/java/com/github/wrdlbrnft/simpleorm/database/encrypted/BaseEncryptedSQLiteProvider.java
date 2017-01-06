@@ -6,8 +6,10 @@ import com.github.wrdlbrnft.simpleorm.database.EncryptedSQLiteProvider;
 import com.github.wrdlbrnft.simpleorm.database.ReadableSQLiteWrapper;
 import com.github.wrdlbrnft.simpleorm.database.SQLiteDatabaseManager;
 import com.github.wrdlbrnft.simpleorm.database.WritableSQLiteWrapper;
+import com.github.wrdlbrnft.simpleorm.exceptions.SimpleOrmPasswordException;
 
 import net.sqlcipher.database.SQLiteDatabase;
+import net.sqlcipher.database.SQLiteException;
 import net.sqlcipher.database.SQLiteOpenHelper;
 
 /**
@@ -23,6 +25,15 @@ public abstract class BaseEncryptedSQLiteProvider extends SQLiteOpenHelper imple
         super(context, name, null, version);
         SQLiteDatabase.loadLibs(context);
         mPassword = password;
+        checkPassword(password);
+    }
+
+    private void checkPassword(char[] password) {
+        try {
+            getReadableDatabase(password);
+        } catch (SQLiteException e) {
+            throw new SimpleOrmPasswordException("Wrong password or database corrupted.", e);
+        }
     }
 
     @Override
